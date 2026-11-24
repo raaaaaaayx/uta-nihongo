@@ -1,8 +1,16 @@
 # 唱歌学日语
 
-用本机的 Apple Music 播放日语歌，同步显示带假名、中文翻译、语法 / 词汇标注的歌词。
+用本机的 Apple Music 或网易云音乐播放日语歌，同步显示带假名、中文翻译、语法 / 词汇标注的歌词。
 
-## 安装
+## 直接下载 Mac App（推荐）
+
+到 [Releases](https://github.com/raaaaaaayx/uta-nihongo/releases/latest) 下载 `uta-nihongo-macOS-arm64.zip`，解压后把「唱歌学日语」拖进「应用程序」文件夹即可。不需要安装 Node.js，也不需要浏览器。
+
+- 需要 Apple 芯片（M 系列）的 Mac，macOS 12 或更新
+- 第一次打开时 macOS 会提示无法验证开发者：在「应用程序」里 **右键 → 打开**，再点「打开」
+- 支持 Apple Music 和网易云音乐（在「设置 → 更多设置 → 程序 → 播放器」里切换）
+
+## 从源码安装
 
 需要：Mac、Apple Music 、[Node.js](https://nodejs.org)
 

@@ -8,6 +8,8 @@ cd "$(dirname "$0")/.."
 ROOT="$PWD"
 NAME="唱歌学日语"
 APP="$ROOT/dist/$NAME.app"
+# 先在普通文件夹里组装，最后再改名成 .app：macOS 的「App 管理」保护不让改动已经运行过的 App 包里的文件
+STAGE="$ROOT/dist/.stage/$NAME.app"
 NODE="$(command -v node || true)"
 [ -n "$NODE" ] || { echo "需要 Node.js（用来打包进 App）"; exit 1; }
 NODE="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$NODE")"
@@ -16,13 +18,13 @@ echo "· 依赖"
 [ -d node_modules ] || npm install --omit=dev --no-audit --no-fund
 
 echo "· 编译外壳"
-rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
-swiftc -O -o "$APP/Contents/MacOS/$NAME" macos/main.swift -framework AppKit -framework WebKit
+rm -rf "$ROOT/dist/.stage"
+mkdir -p "$STAGE/Contents/MacOS" "$STAGE/Contents/Resources/app"
+swiftc -O -o "$STAGE/Contents/MacOS/$NAME" macos/main.swift -framework AppKit -framework WebKit
 
 echo "· 复制程序与 Node.js（$("$NODE" -v)）"
-cp "$NODE" "$APP/Contents/Resources/node"
-rsync -a --exclude '.DS_Store' --exclude 'node_modules/kuromoji/test' --exclude 'node_modules/kuromoji/demo' --exclude '*.map' --exclude '*.d.ts' --exclude '*.d.mts' --exclude '*.d.cts' --exclude '*.md' --exclude '/node_modules/.bin' server public node_modules package.json LICENSE "$APP/Contents/Resources/app/"
+cp "$NODE" "$STAGE/Contents/Resources/node"
+rsync -a --exclude '.DS_Store' --exclude 'node_modules/kuromoji/test' --exclude 'node_modules/kuromoji/demo' --exclude '*.map' --exclude '*.d.ts' --exclude '*.d.mts' --exclude '*.d.cts' --exclude '*.md' --exclude '/node_modules/.bin' server public node_modules package.json LICENSE "$STAGE/Contents/Resources/app/"
 
 echo "· 图标"
 ICONSET="$(mktemp -d)/icon.iconset"; mkdir -p "$ICONSET"
@@ -30,10 +32,10 @@ for s in 16 32 128 256 512; do
   sips -z $s $s public/icon.png --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
   sips -z $((s*2)) $((s*2)) public/icon.png --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
 done
-iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/icon.icns"
+iconutil -c icns "$ICONSET" -o "$STAGE/Contents/Resources/icon.icns"
 
 VERSION="$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')"
-cat > "$APP/Contents/Info.plist" <<PLIST
+cat > "$STAGE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -54,7 +56,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 
 echo "· 签名（本机自签）"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+codesign --force --deep --sign - "$STAGE"
+rm -rf "$APP"
+mv "$STAGE" "$APP"; rm -rf "$ROOT/dist/.stage"
 
 echo "完成：$APP（$(du -sh "$APP" | cut -f1)）"
 if [ "${1:-}" = "--install" ]; then

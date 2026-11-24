@@ -68,8 +68,57 @@ final class Server {
 }
 
 // ---------- 窗口 ----------
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
-  var window: NSWindow!
+// 界面铺满整个窗口（标题栏透明、没有单独的一条），所以要自己决定哪里能拖动窗口。
+// 网页把「能拖的区域」（顶部栏、窗口最上面一条）和「不能拖的区域」（按钮、打开着的抽屉 / 弹窗）
+// 随时报给这边；鼠标按下的那一刻由窗口自己判断（DragWindow.sendEvent），不等网页回话，所以每次都灵。
+// 同时给页面加上 mac-app 标记，好给左上角的红黄绿按钮让出位置。
+let DRAG_SCRIPT = """
+document.documentElement.classList.add('mac-app');
+(() => {
+  const rect = (el) => { const b = el.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
+  const shown = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
+  const CLICKABLE = 'button, a, input, select, textarea, label, [role=button], [contenteditable]';
+  let last = '';
+  function report() {
+    const drag = [[0, 0, innerWidth, 28]];
+    const block = [];
+    const bar = document.getElementById('topbar');
+    if (bar) {
+      const cs = getComputedStyle(bar);
+      if (cs.pointerEvents !== 'none' && Number(cs.opacity) > 0.05) drag.push(rect(bar));
+      // 顶部栏淡出时按钮也算「不能拖」：鼠标移上去它会重新出现，别让刚出现的按钮被当成拖动
+      for (const el of bar.querySelectorAll(CLICKABLE)) if (shown(el)) block.push(rect(el));
+    }
+    for (const el of document.querySelectorAll('.drawer, .modal, .popover, #status ' + CLICKABLE.split(', ').join(', #status '))) {
+      if (!el.closest('[hidden]') && shown(el)) block.push(rect(el));
+    }
+    const msg = JSON.stringify({ drag, block });
+    if (msg !== last) { last = msg; window.webkit.messageHandlers.uta.postMessage(msg); }
+  }
+  setInterval(report, 250);
+  addEventListener('resize', report);
+  document.addEventListener('DOMContentLoaded', report);
+})();
+"""
+
+final class DragWindow: NSWindow {
+  var dragRects: [CGRect] = []  // 网页坐标（左上角为原点，单位和 CSS 像素一样）
+  var blockRects: [CGRect] = []
+  override func sendEvent(_ e: NSEvent) {
+    if e.type == .leftMouseDown, let view = contentView {
+      let p0 = view.convert(e.locationInWindow, from: nil)
+      let p = CGPoint(x: p0.x, y: view.isFlipped ? p0.y : view.bounds.height - p0.y)
+      if dragRects.contains(where: { $0.contains(p) }) && !blockRects.contains(where: { $0.contains(p) }) {
+        if e.clickCount == 2 { zoom(nil) } else { performDrag(with: e) }
+        return
+      }
+    }
+    super.sendEvent(e)
+  }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler {
+  var window: DragWindow!
   var web: WKWebView!
   let server = Server()
 
@@ -77,13 +126,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     buildMenu()
     let config = WKWebViewConfiguration()
     config.websiteDataStore = .default() // 界面偏好存在 localStorage 里，要留下来
+    config.userContentController.addUserScript(WKUserScript(source: DRAG_SCRIPT, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    config.userContentController.add(self, name: "uta")
     web = WKWebView(frame: .zero, configuration: config)
     web.navigationDelegate = self
     web.uiDelegate = self
     web.setValue(false, forKey: "drawsBackground") // 载入前不闪白
     if #available(macOS 13.3, *) { web.isInspectable = true }
 
-    window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 780),
+    window = DragWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 780),
                       styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                       backing: .buffered, defer: false)
     window.title = "唱歌学日语"
@@ -127,6 +178,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     _ = await MainActor.run {
       web.loadHTMLString("<body style='background:#1d1a26;color:#ddd;font:15px -apple-system;padding:40px'>本地服务没有启动起来。日志在：\(dataDir.path)/app.log</body>", baseURL: nil)
     }
+  }
+
+  // 网页报来的「能拖 / 不能拖」区域（见 DRAG_SCRIPT）
+  func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
+    guard let text = message.body as? String, let data = text.data(using: .utf8),
+          let obj = try? JSONSerialization.jsonObject(with: data) as? [String: [[Double]]] else { return }
+    let rects = { (key: String) in (obj[key] ?? []).compactMap { r in r.count == 4 ? CGRect(x: r[0], y: r[1], width: r[2], height: r[3]) : nil } }
+    window.dragRects = rects("drag")
+    window.blockRects = rects("block")
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { true }

@@ -33,6 +33,8 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 
 /* ---------- 顶栏 ---------- */
 #topbar { display: flex; align-items: center; gap: 8px; padding: 12px 16px 6px; flex-wrap: wrap; z-index: 5; }
+/* 在 macOS App 里：左上角是窗口的红黄绿按钮，顶部栏往右让出位置 */
+.mac-app #topbar { padding-left: 84px; }
 .pill, .group { background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 999px; border: 1px solid var(--line); }
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; color: var(--fg-2); }
 .pill:hover { color: var(--fg); background: var(--glass-2); }
