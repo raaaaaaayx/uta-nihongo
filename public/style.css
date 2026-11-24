@@ -665,3 +665,374 @@ select { appearance: none; -webkit-appearance: none; padding-right: 30px;
 @media (prefers-reduced-motion: reduce) {
   .vbody, .vcard .w rt, .line, .f-cur, .drawer, .timed .fu, .timed .rk, .line.active .ann, .line.ann-on .ann, .line .ann.leaving, .dots.idle .dots-g, .line.gap.active .dots, #f-cur .dots { transition: none; animation: none; }
 }
+
+/* =====================================================================
+   Liquid Glass（苹果新版界面风格）+ Apple Music 的配色
+   放在最后统一覆盖前面的外观：半透明的磨砂玻璃、边缘一圈高光、大圆角、胶囊按钮、
+   iOS 式的开关和分组列表。只改外观，不改布局逻辑和动画时序。
+   ===================================================================== */
+:root {
+  --accent: #ff375f;                 /* Apple Music 的粉红 */
+  --accent-2: #ff6b86;
+  --lg-fill: rgba(255, 255, 255, .09);
+  --lg-fill-2: rgba(255, 255, 255, .15);
+  --lg-fill-3: rgba(255, 255, 255, .22);
+  --lg-panel: rgba(26, 23, 36, .76);  /* 抽屉 / 弹窗：比按钮深一些，压在歌词上也看得清 */
+  --lg-blur: blur(30px) saturate(1.8);
+  --lg-blur-strong: blur(48px) saturate(1.9);
+  --lg-edge: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(255, 255, 255, .05);
+  --lg-shadow: 0 14px 44px rgba(0, 0, 0, .32), 0 2px 8px rgba(0, 0, 0, .14);
+  --lg-line: rgba(255, 255, 255, .1);
+  --r-sm: 10px; --r-md: 16px; --r-lg: 24px; --r-xl: 30px;
+}
+::selection { background: rgba(255, 255, 255, .45); }
+input, select, textarea { accent-color: var(--accent); caret-color: var(--accent); }
+
+/* ---------- 玻璃：底色 + 模糊 + 边缘高光 ---------- */
+.pill, .group, #dictbar, .drawer, .popover, .modal-card, #toast, #tip, .g-card, .sense-stack .chip {
+  background: var(--lg-fill); -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
+  border: 0; box-shadow: var(--lg-edge), var(--lg-shadow);
+}
+/* 一圈从左上亮到右下暗的细边：Liquid Glass 的「玻璃边缘反光」 */
+.pill, .group, #dictbar, .drawer, .popover, .modal-card, #toast, .g-card { position: relative; }
+.drawer { position: fixed; } .popover, #toast, .g-card { position: fixed; }
+:is(.pill, .group, #dictbar, .drawer, .popover, .modal-card, #toast, .g-card)::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(140deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, .1) 32%, rgba(255, 255, 255, .03) 62%, rgba(255, 255, 255, .22));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+/* 大块的面板（抽屉、弹窗、记词栏）底色深一些 */
+#dictbar, .drawer, .popover, .modal-card, .g-card { background: var(--lg-panel); -webkit-backdrop-filter: var(--lg-blur-strong); backdrop-filter: var(--lg-blur-strong); }
+
+/* ---------- 顶栏 ---------- */
+#topbar { gap: 10px; padding: 14px 18px 8px; }
+.mac-app #topbar { padding-left: 86px; }
+.pill { padding: 7px 15px; color: var(--fg); font-weight: 500; transition: background .2s, transform .2s cubic-bezier(.3, .75, .2, 1); }
+.pill:hover { background: var(--lg-fill-2); }
+.pill:active, .btn:active, .seg-btn:active { transform: scale(.96); }
+.group { padding: 3px; gap: 2px; }
+.seg-btn { padding: 5px 13px; color: var(--fg-2); font-weight: 500; }
+.seg-btn:hover { color: var(--fg); }
+.seg-btn.on { box-shadow: inset 0 0 0 2em rgba(255, 255, 255, .92), 0 1px 6px rgba(0, 0, 0, .18); color: #1d1a26; }
+.pill.on { background: rgba(255, 255, 255, .92); color: #1d1a26; }
+#btn-edit.on, .pill.warn { background: var(--warn); color: #1d1a26; }
+
+/* ---------- 菜单（显示与设置） ---------- */
+.popover { border-radius: var(--r-lg); padding: 16px 18px; }
+.menu { padding: 7px; border-radius: 20px; min-width: 236px; }
+.menu-title { padding: 8px 12px 3px; font-size: 11.5px; font-weight: 600; color: var(--fg-3); letter-spacing: .02em; }
+.menu-item { padding: 8px 12px; border-radius: 12px; font-weight: 450; }
+.menu-item:hover { background: var(--lg-fill-2); }
+.menu-item .ck { color: var(--accent); font-weight: 700; }
+.menu-sep { background: var(--lg-line); margin: 5px 10px; }
+.pop-title { font-size: 15px; font-weight: 700; }
+
+/* ---------- 播放器（Apple Music 的样子） ---------- */
+#art-wrap { border-radius: 14px; box-shadow: 0 24px 60px rgba(0, 0, 0, .42), 0 0 0 .5px rgba(255, 255, 255, .12); }
+#title { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+#artist { font-size: 16px; color: var(--fg-2); }
+#progress::before, #progress-clip { height: 5px; border-radius: 999px; }
+#progress::before { background: rgba(255, 255, 255, .22); }
+#progress-fill { border-radius: 999px; background: rgba(255, 255, 255, .9); }
+#progress:hover::before, #progress:hover #progress-clip { height: 8px; transition: height .2s; }
+#src-badge { border-radius: 999px; padding: 1px 9px; background: var(--lg-fill); }
+#controls button:hover { background: var(--lg-fill); }
+:is(.view-focus, .view-ktv) #art-wrap { border-radius: 8px; }
+
+/* ---------- 歌词上的标注 ---------- */
+.chip { border-radius: 12px; border: 0; background: rgba(20, 16, 30, .3); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14), inset 0 1px 0 rgba(255, 255, 255, .1); padding: 4px 11px; }
+.chip .lv { border-radius: 999px; padding: 0 6px; }
+.ann.cards .chip, .f-ann.cards .chip { border-radius: var(--r-md); padding: 9px 14px; }
+.sense-stack .chip { background: var(--lg-panel); border-radius: 14px; }
+.sense-stack .chip:hover { background: rgba(48, 44, 62, .72); box-shadow: var(--lg-edge), var(--lg-shadow), inset 0 0 0 1px var(--vocab); }
+.chip.off { box-shadow: inset 0 0 0 1px var(--fg-4); background: none; }
+.line { border-radius: var(--r-md); }
+.line:hover { background: rgba(255, 255, 255, .07); }
+
+/* ---------- 通用按钮：胶囊 ---------- */
+.btn { padding: 7px 16px; border-radius: 999px; border: 0; background: var(--lg-fill-2); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 0 0 .5px rgba(255, 255, 255, .12); font-weight: 500; transition: background .2s, transform .2s cubic-bezier(.3, .75, .2, 1); }
+.btn:hover { background: var(--lg-fill-3); }
+.btn.primary { background: var(--accent); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 6px 18px rgba(255, 255, 255, .32); }
+.btn.primary:hover { background: var(--accent-2); }
+.btn.small { padding: 4px 12px; font-size: 12.5px; }
+.btn.danger, .btn.danger:hover { background: #ff453a; color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3); }
+.btn.toggle.on { background: rgba(255, 255, 255, .92); color: #1d1a26; box-shadow: none; }
+.icon-btn { width: 30px; height: 30px; display: inline-grid; place-items: center; background: var(--lg-fill); color: var(--fg-2); font-size: 12px; transition: background .2s, color .2s; }
+.icon-btn:hover { background: var(--lg-fill-2); color: var(--fg); }
+#controls button.mini.on, .icon-btn.toggle.on { color: #1d1a26; background: rgba(255, 255, 255, .92); box-shadow: none; opacity: 1; }
+
+/* ---------- 输入框：圆角的磨砂底，聚焦时一圈粉色 ---------- */
+input[type=search], input[type=text], input[type=password], select, #rp-input, .db-form input {
+  background: rgba(255, 255, 255, .08); border: 0; border-radius: 12px; padding: 8px 12px;
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14), inset 0 1px 2px rgba(0, 0, 0, .18); transition: box-shadow .2s, background .2s;
+}
+input[type=search], input[type=text], input[type=password], select, #rp-input, .db-form input { outline: none; }
+input[type=search]:focus, input[type=text]:focus, input[type=password]:focus, select:focus, #rp-input:focus, .db-form input:focus {
+  background: rgba(255, 255, 255, .11); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .2), 0 0 0 3px rgba(255, 255, 255, .38);
+}
+input:focus-visible, select:focus-visible { outline: none; }
+button:focus-visible { outline: 2px solid rgba(255, 255, 255, .7); outline-offset: 2px; }
+/* 搜索框：左边一个放大镜，胶囊形 */
+input[type=search] { border-radius: 999px; padding-left: 34px; -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.6' fill='none' stroke='%23ffffff' stroke-opacity='.55' stroke-width='1.6'/%3E%3Cpath d='m10.5 10.5 3 3' stroke='%23ffffff' stroke-opacity='.55' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 12px center; background-size: 15px; }
+input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
+select { border-radius: 12px; }
+
+/* ---------- 开关：复选框画成 iOS 的开关 ---------- */
+input[type=checkbox] { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 38px; height: 23px; margin: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(255, 255, 255, .18); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .12); transition: background .25s; vertical-align: middle; }
+input[type=checkbox]::before { content: ""; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%; background: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, .3); transition: transform .28s cubic-bezier(.3, .75, .2, 1.15); }
+input[type=checkbox]:checked { background: var(--accent); }
+input[type=checkbox]:checked::before { transform: translateX(15px); }
+input[type=checkbox]:focus-visible { outline: 2px solid rgba(255, 255, 255, .7); outline-offset: 2px; }
+.chk { gap: 8px; font-size: 13px; }
+label:has(> input[type=checkbox]) { cursor: pointer; }
+/* 单选（读音改动的范围）：粉色的圆点 */
+input[type=radio] { accent-color: var(--accent); }
+/* 滑块（每句最多显示几个标注） */
+input[type=range] { -webkit-appearance: none; appearance: none; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, .2); flex: 1; min-width: 120px; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .35), 0 0 0 .5px rgba(0, 0, 0, .1); cursor: pointer; }
+input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+
+/* ---------- 记词栏：浮在底部的一块玻璃 ---------- */
+#dictbar { margin: 0 18px 18px; padding: 16px 20px; border-radius: var(--r-xl); gap: 12px; }
+.db-hint { font-size: 13.5px; line-height: 1.6; }
+.db-form { gap: 12px; }
+.db-form label { gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--fg-3); letter-spacing: .02em; }
+.db-form input { padding: 9px 13px; }
+#db-word { font: 700 19px var(--font-ja); }
+.db-sense { line-height: 24px; padding: 0 11px; border: 0; background: var(--lg-fill); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14); }
+.db-sense:hover { background: var(--lg-fill-2); }
+.db-sense.on { background: rgba(155, 231, 207, .2); box-shadow: inset 0 0 0 1px var(--vocab); }
+.db-info .lv { border-radius: 999px; padding: 0 6px; }
+.db-opts { gap: 22px; font-size: 13px; color: var(--fg-2); }
+.db-opts label { display: inline-flex; align-items: center; gap: 8px; }
+.ch.sel { border-radius: 6px; box-shadow: 0 2px 10px rgba(255, 255, 255, .45); }
+
+/* ---------- 抽屉：浮起来的玻璃侧栏（不贴边） ---------- */
+.drawer { top: 12px; bottom: 12px; width: min(420px, calc(100vw - 24px)); border-radius: var(--r-xl); border: 0 !important; overflow: hidden; }
+.drawer.left { left: 12px; } .drawer.right { right: 12px; }
+.mac-app .drawer.left { top: 44px; } /* 让开左上角的红黄绿按钮 */
+.drawer-head { padding: 18px 18px 10px 22px; gap: 8px; }
+.drawer-head strong { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+.drawer-head strong span { font-size: 15px; font-weight: 600; color: var(--fg-3); letter-spacing: 0; margin-left: 4px; }
+.drawer-tools { padding: 2px 16px 12px; border-bottom: 0; }
+.drawer-body { padding: 2px 10px 24px; }
+.track, .album { border-radius: 12px; padding-top: 8px; padding-bottom: 8px; }
+.track:hover, .album:hover { background: var(--lg-fill); }
+.track.cur { background: var(--lg-fill-2); box-shadow: inset 3px 0 0 var(--accent); }
+.cover { border-radius: 8px; }
+#lib-album { border-bottom: 0; }
+.head-sep { background: var(--lg-line); }
+
+/* ---------- 词汇书的卡片 ---------- */
+.vcard { margin: 8px 6px; padding: 14px 16px 12px; border-radius: 20px; border: 0; background: rgba(255, 255, 255, .07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 0 0 .5px rgba(255, 255, 255, .1); gap: 6px; transition: background .2s; }
+.vcard:hover { background: rgba(255, 255, 255, .1); }
+.vcard .w { font: 800 23px/1.6 var(--font-ja); letter-spacing: .01em; }
+.vcard .w small { font-size: 11.5px; }
+.vcard .m { font-size: 14px; border-radius: 10px; padding: 4px 8px; margin: 0 -8px; }
+.vcard .m:focus { background: rgba(255, 255, 255, .1); box-shadow: 0 0 0 3px rgba(255, 255, 255, .3); }
+.vcard .s { font-size: 13.5px; line-height: 1.7; padding-left: 10px; box-shadow: inset 2px 0 0 rgba(255, 255, 255, .18); }
+.vcard .s mark { color: var(--accent-2); }
+.vcard .f { padding-top: 6px; margin-top: 4px; box-shadow: inset 0 .5px 0 var(--lg-line); }
+.vdel { background: var(--lg-fill-2); }
+.vdel.armed, .vdel.armed:hover { background: #ff453a; }
+.vreveal { background: rgba(40, 36, 54, .75); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+
+/* ---------- 弹窗（设置、歌词来源）：大圆角的玻璃卡片 + iOS 的分组列表 ---------- */
+.modal { background: rgba(8, 6, 14, .38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: modal-dim .25s ease-out; }
+.modal-card { border-radius: 32px; border: 0; animation: modal-pop .34s cubic-bezier(.2, .9, .25, 1.05); }
+@keyframes modal-dim { from { opacity: 0; } }
+@keyframes modal-pop { from { opacity: 0; transform: scale(.94) translateY(10px); } }
+.modal-card .drawer-head { padding: 22px 22px 12px 26px; }
+.modal-body.pad { padding: 4px 22px 26px; }
+.modal-body h3 { margin: 24px 0 8px 6px; font-size: 12.5px; font-weight: 600; color: var(--fg-3); letter-spacing: .02em; }
+.modal-body p { margin: 8px 6px; }
+/* 一组设置连成一块圆角的底：组里的第一行顶上圆角，最后一行底下圆角，中间用细线隔开 */
+.modal-body .form-row { padding: 11px 16px; gap: 12px; min-height: 48px; background: rgba(255, 255, 255, .065); }
+.modal-body h3 + .form-row, .modal-body :not(.form-row) + .form-row { border-top-left-radius: 16px; border-top-right-radius: 16px; }
+.modal-body .form-row:has(+ :not(.form-row)), .modal-body .form-row:last-child { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
+.modal-body .form-row + .form-row { box-shadow: inset 0 .5px 0 var(--lg-line); }
+.modal-body .form-row[hidden] + .form-row { box-shadow: none; }
+.form-row > span:first-child { width: 112px; color: var(--fg); font-weight: 500; }
+.modal-body .form-row .muted { font-size: 12px; }
+.keys { padding: 8px 16px; border-radius: 16px; background: rgba(255, 255, 255, .065); gap: 0 26px; }
+.keys + .form-row { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: -1px; box-shadow: inset 0 .5px 0 var(--lg-line); }
+.keys:has(+ .form-row) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.key-row { padding: 6px 0; }
+.key-btn { border-radius: 8px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
+.key-btn.rec { background: var(--accent); color: #fff; }
+.marks { padding: 8px 4px; }
+.mark-chip { border: 0; background: var(--lg-fill); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14); }
+.fold-btn:hover { background: var(--lg-fill); }
+/* 歌词来源的候选：一行一个，圆角高亮 */
+.cand { margin: 0 12px; padding: 11px 14px; border-top: 0; border-radius: 14px; }
+.cand + .cand { margin-top: 2px; }
+.cand:hover { background: var(--lg-fill); }
+.cand.cur { background: var(--lg-fill-2); box-shadow: inset 3px 0 0 var(--accent); }
+.cand .src { border-radius: 999px; padding: 2px 9px; background: var(--lg-fill-2); }
+#src-list { padding-bottom: 14px; }
+
+/* ---------- 读音编辑、时间对齐等小浮层 ---------- */
+.rp-auto { border: 0; background: var(--lg-fill-2); }
+.rp-auto:hover { background: var(--lg-fill-3); }
+#offset-val { font-size: 17px; font-weight: 700; }
+
+/* ---------- 提示 ---------- */
+#tip { background: rgba(28, 24, 38, .7); border-radius: 14px; padding: 9px 13px; }
+#toast { background: rgba(255, 255, 255, .86); color: #1d1a26; padding: 10px 20px; border-radius: 999px; -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); box-shadow: 0 14px 44px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .9); }
+#toast::after { display: none; }
+#bye { background: rgba(14, 12, 22, .6); -webkit-backdrop-filter: blur(40px) saturate(1.6); backdrop-filter: blur(40px) saturate(1.6); }
+
+/* ---------- 使用指引 ---------- */
+.g-card { border-radius: 26px; background: rgba(36, 32, 48, .72); }
+.g-card::before { background: rgba(36, 32, 48, .95); border-color: rgba(255, 255, 255, .14); }
+.g-dots i.on { background: var(--accent); }
+.g-icon { border-radius: 16px; }
+
+@media (prefers-reduced-motion: reduce) { .modal, .modal-card { animation: none; } input[type=checkbox]::before { transition: none; } }
+
+/* JLPT 级别：一排可以点选的胶囊（开 = 粉色），比一排开关清爽 */
+#set-levels { display: flex; flex-wrap: wrap; gap: 6px; }
+#set-levels .chk { position: relative; padding: 4px 12px; border-radius: 999px; background: var(--lg-fill); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .14);
+  color: var(--fg-3); font-weight: 600; font-size: 12.5px; transition: background .2s, color .2s; }
+#set-levels .chk:has(input:checked) { background: var(--accent); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28); }
+#set-levels .chk:has(input:focus-visible) { outline: 2px solid rgba(255, 255, 255, .7); outline-offset: 2px; }
+#set-levels input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; }
+#set-levels input::before { display: none; }
+
+/* 滚动条：细细一条半透明的，不滚的时候几乎看不见 */
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .32); }
+
+/* ---------- Liquid Glass：看得见后面的玻璃（覆盖上面偏灰、偏实的版本） ----------
+   真正的 Liquid Glass 是透明的：后面的封面颜色和文字能透出来，只轻轻磨砂一下；
+   玻璃感靠边缘的亮暗反光（左上亮、右下暗）、一圈内发光和一道斜向的表面高光。
+   注：系统 WebKit 不支持用 SVG 滤镜做边缘的折射扭曲，这里用高光和描边模拟质感 */
+:root {
+  --lg-fill: rgba(255, 255, 255, .1);
+  --lg-fill-2: rgba(255, 255, 255, .17);
+  --lg-fill-3: rgba(255, 255, 255, .26);
+  --lg-panel: rgba(22, 20, 32, .3);
+  --lg-blur: blur(8px) saturate(2.1) brightness(1.06);
+  --lg-blur-strong: blur(20px) saturate(2.2) brightness(.82);
+  --lg-edge: inset 1.5px 1.5px 0 -.5px rgba(255, 255, 255, .42), inset -1px -1px 0 -.5px rgba(255, 255, 255, .12),
+             inset 0 0 0 .5px rgba(255, 255, 255, .14), inset 0 0 22px rgba(255, 255, 255, .07);
+  --lg-sheen: linear-gradient(132deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .03) 34%, rgba(255, 255, 255, 0) 58%, rgba(255, 255, 255, .07));
+}
+.pill, .group, #dictbar, .drawer, .popover, .modal-card, #tip, .g-card, .sense-stack .chip {
+  background-image: var(--lg-sheen);
+  -webkit-backdrop-filter: blur(8px) saturate(2.1) brightness(1.06); backdrop-filter: blur(8px) saturate(2.1) brightness(1.06);
+}
+#dictbar, .drawer, .popover, .modal-card, .g-card, .sense-stack .chip {
+  -webkit-backdrop-filter: blur(20px) saturate(2.2) brightness(.82); backdrop-filter: blur(20px) saturate(2.2) brightness(.82);
+}
+/* 面板上的字：后面透着东西，加一点点阴影托住 */
+#dictbar, .drawer, .popover, .modal-card, .g-card { text-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.seg-btn.on, .pill.on, .btn.toggle.on, .icon-btn.toggle.on, #btn-edit.on, .btn.primary, #toast { text-shadow: none; }
+/* 边缘那一圈反光加强一点 */
+:is(.pill, .group, #dictbar, .drawer, .popover, .modal-card, .g-card)::after {
+  background: linear-gradient(140deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .12) 28%, rgba(255, 255, 255, .02) 60%, rgba(255, 255, 255, .32));
+}
+/* 词汇书的卡片、设置里的分组：玻璃上的一层玻璃 */
+.vcard, .modal-body .form-row, .keys { background: rgba(255, 255, 255, .08); background-image: linear-gradient(160deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 50%);
+  -webkit-backdrop-filter: blur(6px) saturate(1.6); backdrop-filter: blur(6px) saturate(1.6); }
+.vcard { box-shadow: inset 1px 1px 0 -.5px rgba(255, 255, 255, .32), inset 0 0 0 .5px rgba(255, 255, 255, .12), 0 6px 20px rgba(0, 0, 0, .12); }
+.vcard:hover { background-color: rgba(255, 255, 255, .12); }
+.modal-body .form-row, .keys { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* 弹窗后面：轻轻压暗、不糊掉，玻璃才看得出是玻璃 */
+.modal { background: rgba(8, 6, 14, .22); -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* 输入框：凹进去的一块透明玻璃 */
+input[type=search], input[type=text], input[type=password], select, #rp-input, .db-form input { background-color: rgba(0, 0, 0, .16); }
+/* 下拉框的箭头（上面统一设输入框底色时被一起清掉了，补回来） */
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5 6 6l4.5-4.500' fill='none' stroke='%23ffffff' stroke-opacity='.7' stroke-width='1.600' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 11px auto; padding-right: 32px; }
+/* 抽屉从顶栏下面开始：玻璃是透明的，压在顶栏按钮上会和标题叠在一起 */
+.drawer, .mac-app .drawer.left { top: 62px; }
+/* 设置 / 歌词来源：字多，玻璃比抽屉稍深一点 */
+.modal-card { background-color: rgba(22, 20, 32, .42); }
+
+/* ---------- 不要白色描边：去掉玻璃边缘那一圈白线，只留透明、模糊和表面的反光 ---------- */
+:root { --lg-edge: inset 0 0 24px rgba(255, 255, 255, .05); }
+:is(.pill, .group, #dictbar, .drawer, .popover, .modal-card, #toast, .g-card)::after { display: none; }
+.vcard { box-shadow: 0 6px 20px rgba(0, 0, 0, .12); }
+.btn, .chip, .db-sense, .mark-chip, #set-levels .chk, input[type=checkbox], #art-wrap { box-shadow: none; }
+.btn.primary { box-shadow: 0 6px 18px rgba(255, 255, 255, .3); }
+input[type=search], input[type=text], input[type=password], select, #rp-input, .db-form input { box-shadow: inset 0 1px 3px rgba(0, 0, 0, .2); }
+.db-sense.on { box-shadow: none; background: rgba(155, 231, 207, .28); }
+.chip.off { box-shadow: none; background: rgba(255, 255, 255, .05); }
+.sense-stack .chip:hover { box-shadow: var(--lg-shadow); background-color: rgba(48, 44, 62, .55); }
+.g-card::before { border-color: transparent; }
+#art-wrap { box-shadow: 0 24px 60px rgba(0, 0, 0, .42); }
+
+/* ---------- 提示色用白色（不用 Apple Music 的粉红） ---------- */
+:root { --accent: #fff; --accent-2: #fff; }
+::selection { background: rgba(255, 255, 255, .32); }
+/* 白底上的字改成深色 */
+.btn.primary, .btn.primary:hover { background: rgba(255, 255, 255, .92); color: #1d1a26; text-shadow: none; box-shadow: 0 6px 18px rgba(0, 0, 0, .22); }
+.btn.primary:hover { background: #fff; }
+.ch.sel { color: #1d1a26; -webkit-text-fill-color: #1d1a26; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); }
+#set-levels .chk:has(input:checked) { background: rgba(255, 255, 255, .92); color: #1d1a26; text-shadow: none; }
+.key-btn.rec { background: #fff; color: #1d1a26; }
+/* 开关：打开时是白色的轨道，滑块变成深色 */
+input[type=checkbox]:checked { background: rgba(255, 255, 255, .9); }
+input[type=checkbox]:checked::before { background: #2a2635; box-shadow: 0 2px 5px rgba(0, 0, 0, .35); }
+/* 词汇书例句里的那个词：白色加粗，加一条下划线 */
+.vcard .s mark { color: #fff; font-weight: 700; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+
+/* ---------- 弹出 / 收起的动效（Liquid Glass 的弹性：冲过头一点再回来） ----------
+   出现：元素一显示就放（CSS 动画）；收起：app.js 的 animateHidden 先加 .leaving 放完再藏起来，
+   所以下面各个「出」的时长要和 animateHidden 里给的一致 */
+:root { --spring-out: cubic-bezier(.34, 1.36, .5, 1); --ease-in: cubic-bezier(.4, 0, .9, .4); }
+
+/* 抽屉：从侧边滑进来，带一点缩放；收起时往回滑并淡出（.28s） */
+.drawer.right { transform-origin: 100% 30%; animation: lg-drawer-r .5s var(--spring-out) both; }
+.drawer.left { transform-origin: 0 30%; animation: lg-drawer-l .5s var(--spring-out) both; }
+@keyframes lg-drawer-r { from { opacity: 0; transform: translateX(46px) scale(.94); } 45% { opacity: 1; } }
+@keyframes lg-drawer-l { from { opacity: 0; transform: translateX(-46px) scale(.94); } 45% { opacity: 1; } }
+.drawer.right.leaving { animation: lg-drawer-r-out .28s var(--ease-in) both; }
+.drawer.left.leaving { animation: lg-drawer-l-out .28s var(--ease-in) both; }
+@keyframes lg-drawer-r-out { to { opacity: 0; transform: translateX(40px) scale(.95); } }
+@keyframes lg-drawer-l-out { to { opacity: 0; transform: translateX(-40px) scale(.95); } }
+/* 抽屉里的内容稍晚一点跟上来 */
+.drawer:not(.leaving) .drawer-body > * { animation: lg-item-in .45s var(--spring-out) backwards; }
+.drawer:not(.leaving) .drawer-body > :nth-child(2) { animation-delay: .03s; }
+.drawer:not(.leaving) .drawer-body > :nth-child(3) { animation-delay: .06s; }
+.drawer:not(.leaving) .drawer-body > :nth-child(4) { animation-delay: .09s; }
+.drawer:not(.leaving) .drawer-body > :nth-child(n+5) { animation-delay: .12s; }
+@keyframes lg-item-in { from { opacity: 0; transform: translateY(12px); } }
+
+/* 弹窗（设置、歌词来源）：从中间放大弹出，背景同时压暗；收起时缩小淡出（.24s） */
+.modal { animation: lg-dim-in .3s ease-out both; }
+.modal-card { animation: lg-pop-in .55s var(--spring-out) both; }
+@keyframes lg-dim-in { from { opacity: 0; } }
+@keyframes lg-pop-in { from { opacity: 0; transform: scale(.86) translateY(24px); } 40% { opacity: 1; } }
+.modal.leaving { animation: lg-dim-out .24s ease-in both; }
+.modal.leaving .modal-card { animation: lg-pop-out .24s var(--ease-in) both; }
+@keyframes lg-dim-out { to { opacity: 0; } }
+@keyframes lg-pop-out { to { opacity: 0; transform: scale(.92) translateY(10px); } }
+
+/* 设置菜单：从「设置」按钮那个角长出来；收起时缩回去（.18s） */
+#menu { transform-origin: calc(100% - 30px) 0; animation: lg-menu-in .42s var(--spring-out) both; }
+@keyframes lg-menu-in { from { opacity: 0; transform: scale(.82) translateY(-8px); } 35% { opacity: 1; } }
+#menu.leaving { animation: lg-menu-out .18s var(--ease-in) both; }
+@keyframes lg-menu-out { to { opacity: 0; transform: scale(.9) translateY(-4px); } }
+
+/* 记词栏：从底下弹上来；收起时沉下去（.26s） */
+#dictbar { transform-origin: 50% 100%; animation: lg-bar-in .55s var(--spring-out) both; }
+@keyframes lg-bar-in { from { opacity: 0; transform: translateY(36px) scale(.95); } 40% { opacity: 1; } }
+#dictbar.leaving { animation: lg-bar-out .26s var(--ease-in) both; }
+@keyframes lg-bar-out { to { opacity: 0; transform: translateY(30px) scale(.96); } }
+/* 记词栏里出现「单词 / 读音 / 释义」那一排时也弹一下 */
+.db-form:not([hidden]) { animation: lg-item-in .4s var(--spring-out); }
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer, .drawer .drawer-body > *, .modal, .modal-card, #menu, #dictbar, .db-form { animation: none !important; }
+}

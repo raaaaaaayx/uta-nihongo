@@ -2476,7 +2476,18 @@ $('#btn-menu').addEventListener('click', () => toggleMenu());
 $('#btn-dict').addEventListener('click', () => setMode('dict'));
 $('#btn-edit').addEventListener('click', () => { toggleMenu(false); setMode('edit'); });
 $('#btn-library').addEventListener('click', openLibrary);
-$('#btn-vocab').addEventListener('click', () => { $('#queue').hidden = true; $('#vocab').hidden = false; loadVocab(); });
+// 词汇书按钮和「记词」一样是开关：点一下打开（按钮亮起），再点一下关上
+$('#btn-vocab').addEventListener('click', () => {
+  if (!$('#vocab').hidden) { $('#vocab').hidden = true; return; }
+  $('#queue').hidden = true; $('#vocab').hidden = false; loadVocab();
+});
+// 按钮亮不亮跟着抽屉走：不管是点按钮、点抽屉的 ✕、按快捷键还是被别的抽屉顶掉，都对得上
+// （'uta:toggle' 由下面的 animateHidden 发出：抽屉一开始收起就熄灭，不用等收起的动画放完）
+$('#vocab').addEventListener('uta:toggle', () => {
+  const open = !$('#vocab').hidden;
+  $('#btn-vocab').classList.toggle('on', open);
+  $('#btn-vocab').setAttribute('aria-pressed', open);
+});
 $('#btn-source').addEventListener('click', () => { toggleMenu(false); openSource(); });
 $('#btn-settings').addEventListener('click', () => { toggleMenu(false); openSettings(); });
 $('#btn-offset').addEventListener('click', () => {
@@ -2978,6 +2989,51 @@ function showGuide() {
   startGuide(() => { prefs.guide = 1; savePrefs(); });
 }
 $('#set-guide').addEventListener('click', showGuide);
+
+// ---------------- 弹出 / 收起的动效 ----------------
+// 抽屉、弹窗、菜单、记词栏原来都是直接 hidden = true / false，出现有动画、消失是一下子没了。
+// 这里接管这几个元素的 hidden：设成显示时照常显示（出现的动画写在 CSS 里）；
+// 设成隐藏时先加 .leaving 放收起的动画，放完再真的藏起来。
+// 读 hidden 拿到的是「要变成的样子」，所以别处的 if (!$('#vocab').hidden) 这类判断不受影响
+const HIDDEN = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'hidden');
+// 布局变化时让元素从旧位置滑到新位置（FLIP）：先记下位置，做改动，再从旧位置弹回新位置
+function flip(els, mutate) {
+  const items = els.map((el) => [el, el.getBoundingClientRect()]).filter(([, r]) => r.width > 0);
+  mutate();
+  if (noMotion.matches) return;
+  for (const [el, a] of items) {
+    const b = el.getBoundingClientRect();
+    if (!b.width) continue;
+    const dx = a.left - b.left, dy = a.top - b.top, k = a.width / b.width;
+    if (Math.abs(dx) < .5 && Math.abs(dy) < .5 && Math.abs(k - 1) < .003) continue;
+    el.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${k})`, transformOrigin: '0 0' }, { transform: 'none', transformOrigin: '0 0' }],
+      { duration: 560, easing: 'cubic-bezier(.34, 1.25, .5, 1)' });
+  }
+}
+// 记词栏占着窗口底部的位置：它出现 / 收起时播放器那块变矮 / 变高，封面和歌名会重新居中。让它们滑过去而不是跳过去
+const playerParts = () => ['#art-wrap', '#meta', '#transport'].map((q) => $(q));
+function animateHidden(el, leaveMs, wrap = (f) => f()) {
+  let target = HIDDEN.get.call(el), timer = 0;
+  Object.defineProperty(el, 'hidden', {
+    configurable: true,
+    get: () => target,
+    set(v) {
+      v = !!v;
+      if (v === target) return;
+      target = v;
+      clearTimeout(timer);
+      if (!v) { el.classList.remove('leaving'); wrap(() => HIDDEN.set.call(el, false)); }
+      else if (noMotion.matches || HIDDEN.get.call(el)) HIDDEN.set.call(el, true);
+      else {
+        el.classList.add('leaving');
+        timer = setTimeout(() => { el.classList.remove('leaving'); wrap(() => HIDDEN.set.call(el, true)); }, leaveMs);
+      }
+      el.dispatchEvent(new Event('uta:toggle'));
+    },
+  });
+}
+for (const [sel, ms] of [['#vocab', 280], ['#queue', 280], ['#library', 280], ['#settings-modal', 240], ['#source-modal', 240], ['#menu', 180]]) animateHidden($(sel), ms);
+animateHidden($('#dictbar'), 260, (change) => flip(playerParts(), change));
 
 // ---------------- 启动 ----------------
 applyPrefs();
