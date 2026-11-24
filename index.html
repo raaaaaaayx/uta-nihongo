@@ -161,6 +161,7 @@ section { position: relative; }
 .scroll-v .list { position: absolute; left: 42cqw; right: 4cqw; top: 9cqw; bottom: 8cqw; display: flex; flex-direction: column; justify-content: center; gap: 2.2cqw;
   -webkit-mask-image: linear-gradient(transparent, #000 15%, #000 85%, transparent); mask-image: linear-gradient(transparent, #000 15%, #000 85%, transparent); }
 .scroll-v .ln { font: 700 2.9cqw/1.45 var(--ja); color: rgba(255, 255, 255, .32); filter: blur(.12cqw); }
+.scroll-v .ln.far { filter: blur(.3cqw); color: rgba(255, 255, 255, .24); }
 .scroll-v .ln small { display: block; font: 500 1.3cqw/1.4 var(--sans); margin-top: .2cqw; }
 .scroll-v .ln.a { color: #fff; filter: none; }
 .scroll-v .ln.a small { color: rgba(255, 255, 255, .75); }
@@ -264,6 +265,10 @@ section { position: relative; }
 .offset .track { flex: 1; height: 6px; border-radius: 9px; background: #2c2c2e; position: relative; }
 .offset .track i { position: absolute; top: 50%; left: 50%; width: 18px; height: 18px; border-radius: 50%; background: #fff; translate: -50% -50%; animation: nudge 4s var(--ease) infinite; }
 @keyframes nudge { 0%, 100% { left: 50%; } 30% { left: 62%; } 65% { left: 41%; } }
+.wrapdemo { display: flex; flex-wrap: wrap; gap: 4px 0; font: 700 22px/1.3 var(--ja); }
+.wrapdemo span { padding: 0 2px; border-radius: 6px; }
+.wrapdemo span:nth-child(odd) { background: rgba(155, 231, 207, .14); }
+.wrapdemo span:nth-child(even) { background: rgba(205, 185, 255, .14); }
 .no-browser { display: flex; align-items: baseline; gap: 6px; }
 .tile.app-tile { background: radial-gradient(120% 120% at 100% 0%, rgba(162, 123, 255, .25), transparent 60%), var(--tile); }
 .tile.app-tile img { width: 88px; height: 88px; border-radius: 20px; box-shadow: 0 16px 40px rgba(180, 100, 255, .35); margin-bottom: 8px; }
@@ -379,7 +384,7 @@ footer p { margin: 0 0 8px; }
         <div class="step on">
           <div class="num">01 · 逐字填色</div>
           <h3>唱到哪个字，<br><span class="grad">亮到哪个字。</span></h3>
-          <p>有逐字时间轴的歌词按字填充，汉字上方自动标好假名，下方是中文翻译。<b>两种样式</b>：Apple Music 风格的滚动歌词，或者一句一屏的大字。</p>
+          <p>有逐字时间轴的歌词按字填充，汉字上方自动标好假名，下方是中文翻译。<b>两种样式</b>：Apple Music 风格的滚动歌词（离当前句越远越虚），或者一句一屏的大字。</p>
         </div>
         <div class="step">
           <div class="num">02 · 语法与词汇</div>
@@ -410,7 +415,7 @@ footer p { margin: 0 0 8px; }
             <div class="ln">風が窓を叩いていた<small>风敲打着窗户</small></div>
             <div class="ln a"><ruby>夜空<rt>よぞら</rt></ruby>に<ruby>光<rt>ひか</rt></ruby>る<ruby>星<rt>ほし</rt></ruby>を<ruby>数<rt>かぞ</rt></ruby>えていた<small>我数着夜空中闪烁的星星</small></div>
             <div class="ln">君の声がまだ聞こえる<small>你的声音我仍听得见</small></div>
-            <div class="ln">明日になれば会えるかな<small>到了明天能见到你吗</small></div>
+            <div class="ln far">明日になれば会えるかな<small>到了明天能见到你吗</small></div>
           </div>
         </div>
         <!-- 2 语法词汇 -->
@@ -477,7 +482,7 @@ footer p { margin: 0 0 8px; }
     <div class="head">
       <p class="eyebrow rv">界面设计</p>
       <h2 class="h-l rv d1">通透，<span class="grad">随歌而动。</span></h2>
-      <p class="lede rv d2">半透明的玻璃质感面板，透出身后流动的颜色。背景从专辑封面里取色，按颜色占比缓缓流动，每首歌都是不同的样子。</p>
+      <p class="lede rv d2">半透明的玻璃质感面板，透出身后流动的颜色。背景从专辑封面里取出真正的主色，按占比缓缓流动，每首歌都是不同的样子；歌词像 Apple Music 一样，离正在唱的那句越远越虚。</p>
     </div>
     <div class="aquarium rv">
       <div class="mac" style="position:absolute;inset:0;border-radius:0;aspect-ratio:auto;box-shadow:none"><div class="bg"><i></i><i></i><i></i><i></i></div></div>
@@ -531,15 +536,21 @@ footer p { margin: 0 0 8px; }
         <h4>唱法不一样？<br>自己说了算。</h4>
         <p>「修改」模式里点汉字改假名：只改这一句、整首，或所有歌。</p>
       </div>
-      <div class="tile s3 rv">
+      <div class="tile s2 rv">
         <div class="k1">快捷键</div>
         <h4>手不离键盘。</h4>
         <div class="foot keys"><span class="kbd">空格<small>播放</small></span><span class="kbd">←→<small>换句</small></span><span class="kbd">F<small>样式</small></span><span class="kbd">D<small>记词</small></span><span class="kbd">E<small>修改</small></span></div>
       </div>
-      <div class="tile s3 rv d1">
+      <div class="tile s2 rv d1">
         <div class="k1">AI 讲解（可选）</div>
         <h4>整首歌，<br>讲给你听。</h4>
         <p>填入自己的 Claude API Key，为整首歌生成贴合语境的讲解。不填也能用全部基础功能。</p>
+      </div>
+      <div class="tile s2 rv d2">
+        <div class="k1">长句换行</div>
+        <h4>按词组断行，<br>不拆散一个词。</h4>
+        <p>长歌词只在词组之间换行，几行排得差不多长，不会把一个字单独甩到下一行。</p>
+        <div class="foot wrapdemo" lang="ja"><span>白い魚の</span><span>群れを</span><span>探している</span></div>
       </div>
     </div>
   </div>
