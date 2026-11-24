@@ -105,7 +105,7 @@ final class DragWindow: NSWindow {
   var dragRects: [CGRect] = []  // 网页坐标（左上角为原点，单位和 CSS 像素一样）
   var blockRects: [CGRect] = []
   override func sendEvent(_ e: NSEvent) {
-    if e.type == .leftMouseDown, let view = contentView {
+    if e.type == .leftMouseDown, let view = contentView, !onWindowButton(e) {
       let p0 = view.convert(e.locationInWindow, from: nil)
       let p = CGPoint(x: p0.x, y: view.isFlipped ? p0.y : view.bounds.height - p0.y)
       if dragRects.contains(where: { $0.contains(p) }) && !blockRects.contains(where: { $0.contains(p) }) {
@@ -114,6 +114,13 @@ final class DragWindow: NSWindow {
       }
     }
     super.sendEvent(e)
+  }
+  // 左上角的红黄绿按钮（关闭 / 最小化 / 全屏）在「能拖」的那一条里面，点它们时不能当成拖动
+  func onWindowButton(_ e: NSEvent) -> Bool {
+    [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].contains { type in
+      guard let b = standardWindowButton(type), !b.isHidden else { return false }
+      return b.convert(b.bounds, to: nil).insetBy(dx: -3, dy: -3).contains(e.locationInWindow)
+    }
   }
 }
 
