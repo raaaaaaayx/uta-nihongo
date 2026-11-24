@@ -297,6 +297,15 @@ section { position: relative; }
 .cmd code::-webkit-scrollbar { display: none; }
 .cmd button { flex: none; font: 500 13px var(--sans); color: var(--fg); background: var(--tile-2); border: 0; border-radius: 99px; padding: 8px 14px; cursor: pointer; transition: background .2s; }
 .cmd button:hover { background: #2c2c2e; }
+.first { margin: 56px auto 0; max-width: 760px; text-align: left; background: var(--tile); border-radius: 24px; padding: 28px 28px 24px; }
+.first h3 { font-size: 21px; margin-bottom: 8px; }
+.first p { margin: 0 0 12px; color: var(--fg-2); font-size: 15px; }
+.first ol { margin: 0 0 14px; padding-left: 1.3em; color: var(--fg-2); font-size: 15px; }
+.first li { margin: 6px 0; }
+.first li b { color: var(--fg); font-weight: 600; }
+.first .box, .cmd .box { display: flex; align-items: center; gap: 12px; background: #0b0b0c; border-radius: 14px; padding: 12px 12px 12px 18px; box-shadow: inset 0 0 0 1px var(--line); }
+.first code { flex: 1; min-width: 0; font: 13.5px/1.5 var(--mono); overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.first button { flex: none; font: 500 13px var(--sans); color: var(--fg); background: var(--tile-2); border: 0; border-radius: 99px; padding: 8px 14px; cursor: pointer; }
 .note { font-size: 13px; color: var(--fg-3); margin-top: 18px; }
 
 footer { border-top: 1px solid var(--line); padding: 28px 0 48px; font-size: 12px; color: var(--fg-3); line-height: 1.7; }
@@ -512,7 +521,7 @@ footer p { margin: 0 0 8px; }
       <div class="tile s4 app-tile rv">
         <img src="icon.png" alt="">
         <h4>真正的 Mac App，<br>不用开浏览器。</h4>
-        <p>用系统自带的 WebKit 开独立窗口，Node.js 打包在 App 里，<b>下载即用</b>。词汇书、设置都存在本机。</p>
+        <p>用系统自带的 WebKit 开独立窗口，Node.js 打包在 App 里，<b>下载即用</b>。词汇书、设置都存在本机；每次打开都会检查新版本，有更新就提醒你。</p>
       </div>
       <div class="tile s2 rv d1">
         <div class="k1">内置语法规则</div>
@@ -576,10 +585,20 @@ footer p { margin: 0 0 8px; }
   <div class="wrap">
     <img class="icon rv" src="icon.png" alt="唱歌学日语图标">
     <h2 class="h-xl rv d1">现在，<span class="grad">开唱。</span></h2>
-    <p class="lede rv d2">下载后解压，把「唱歌学日语」拖进「应用程序」。第一次打开时在图标上 <b>右键 → 打开</b>。</p>
+    <p class="lede rv d2">下载后解压，把「唱歌学日语」拖进「应用程序」，双击打开。以后有新版本，打开时会自动提醒你。</p>
     <div class="cta rv d3">
       <a class="pill lg" href="https://github.com/raaaaaaayx/uta-nihongo/releases/latest/download/uta-nihongo-macOS-arm64.zip">下载 Mac App</a>
       <a class="more" href="https://github.com/raaaaaaayx/uta-nihongo">在 GitHub 查看源码</a>
+    </div>
+    <div class="first rv d3">
+      <h3>第一次打开被 macOS 拦下来？</h3>
+      <p>这个 App 没有经过苹果公证，第一次打开时会提示「无法验证开发者」。放行一次，之后就能正常打开：</p>
+      <ol>
+        <li><b>macOS 15 及更新：</b>先双击打开一次（会被拦），然后到「系统设置 → 隐私与安全性」，往下找到「唱歌学日语」那一行，点<b>仍要打开</b>，输入密码。</li>
+        <li><b>macOS 14 及更早：</b>在「应用程序」里右键 App → 打开 → 再点「打开」。</li>
+        <li><b>或者</b>在「终端」里运行一次：</li>
+      </ol>
+      <div class="box"><code id="cmd2">xattr -dr com.apple.quarantine /Applications/唱歌学日语.app</code><button type="button" data-copy="cmd2">拷贝</button></div>
     </div>
     <div class="cmd rv d3">
       <div class="lbl">或者在「终端」里一行安装（需要 Node.js）</div>
@@ -692,12 +711,12 @@ footer p { margin: 0 0 8px; }
   }));
 
   // 拷贝安装命令
-  const btn = document.getElementById('copy');
-  btn.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(document.getElementById('cmd').textContent); btn.textContent = '已拷贝'; }
-    catch { getSelection().selectAllChildren(document.getElementById('cmd')); btn.textContent = '请按 ⌘C'; }
+  document.querySelectorAll('#copy, [data-copy]').forEach((btn) => btn.addEventListener('click', async () => {
+    const code = document.getElementById(btn.dataset.copy || 'cmd');
+    try { await navigator.clipboard.writeText(code.textContent); btn.textContent = '已拷贝'; }
+    catch { getSelection().selectAllChildren(code); btn.textContent = '请按 ⌘C'; }
     setTimeout(() => { btn.textContent = '拷贝'; }, 1800);
-  });
+  }));
 })();
 </script>
 </body>
