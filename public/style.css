@@ -49,8 +49,8 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 
 /* ---------- 顶栏 ---------- */
 #topbar { display: flex; align-items: center; gap: 8px; padding: 12px 16px 6px; flex-wrap: wrap; z-index: 5; }
-/* 在 macOS App 里：左上角是窗口的红黄绿按钮，顶部栏往右让出位置 */
-.mac-app #topbar { padding-left: 84px; }
+/* 在 macOS App 里：左上角是窗口的红黄绿按钮，顶部栏往右让出位置（全屏时没有这几个按钮，mac-full 由 App 外壳加上） */
+.mac-app:not(.mac-full) #topbar { padding-left: 84px; }
 .pill, .group { background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 999px; border: 1px solid var(--line); }
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; color: var(--fg-2); }
 .pill:hover { color: var(--fg); background: var(--glass-2); }
@@ -297,6 +297,15 @@ ruby { ruby-align: center; }
 #focus-inner { width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.8vh; }
 .f-prev, .f-next { color: var(--fg-3); font: 600 clamp(15px, 1.7vw, 24px)/1.6 var(--font-ja); min-height: 1.6em; filter: blur(.6px); max-width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .f-prev, .f-next { cursor: pointer; }
+/* Mac App 里剩下几处模糊滤镜也拿掉（原因见 .mac-app .line 那里：WebKit 的滤镜图层边上会画出紫线）：
+   大字样式的上一句 / 下一句、KTV 样式封面的倒影、词汇书记忆模式的遮挡（遮挡改成和歌词一样的文字阴影） */
+.mac-app .f-prev, .mac-app .f-next { filter: none; }
+.mac-app #k-refl { filter: none; opacity: .22; }
+.mac-app .vcard.veil .vbody, .mac-app .vcard.veil .w rt { filter: none; }
+/* 字的颜色留 1%（全透明的字 WebKit 连阴影一起不画）；日文用 Hiragino 本身（「Uta JP」在 WebKit 里画不出文字阴影） */
+.mac-app .vcard.veil .vbody *, .mac-app .vcard.veil .vbody *::before, .mac-app .vcard.veil .w rt {
+  color: rgba(255, 255, 255, .01); text-shadow: 0 0 7px rgba(255, 255, 255, .8); font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif; }
+.mac-app .vcard .vbody *, .mac-app .vcard .w rt { transition: color .35s ease, text-shadow .35s ease; }
 .f-cur { animation: rise .45s cubic-bezier(.2, .8, .2, 1); }
 .f-cur .jp { font: 700 clamp(34px, 5.4vw, 88px)/1.55 var(--font-ja); text-wrap: balance; }
 .f-cur .zh { font-size: clamp(16px, 1.9vw, 28px); color: var(--fg-2); margin-top: .6vh; font-weight: 500; }
@@ -756,7 +765,7 @@ input, select, textarea { accent-color: var(--accent); caret-color: var(--accent
 /* ---------- 顶栏 ---------- */
 #topbar { gap: 10px; padding: 14px 18px 8px; }
 /* macOS App：顶部栏排在红黄绿按钮右边，并和它们对齐在同一条中线上（位置由外壳量好传进来；17.75px 是这一行按钮高度的一半） */
-.mac-app #topbar { padding-left: calc(var(--tl-end, 72px) + 20px); padding-top: max(6px, calc(var(--tl-cy, 31.75px) - 17.75px)); }
+.mac-app:not(.mac-full) #topbar { padding-left: calc(var(--tl-end, 72px) + 20px); padding-top: max(6px, calc(var(--tl-cy, 31.75px) - 17.75px)); }
 .pill { padding: 7px 15px; color: var(--fg); font-weight: 500; transition: background .2s, transform .2s cubic-bezier(.3, .75, .2, 1); }
 .pill:hover { background: var(--lg-fill-2); }
 .pill:active, .btn:active, .seg-btn:active { transform: scale(.96); }

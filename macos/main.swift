@@ -192,11 +192,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
   }
 
   // 把红黄绿按钮的位置告诉网页（--tl-end：最右一个的右边缘；--tl-cy：竖直中线，都从窗口左上角量），
-  // 顶部栏据此排在它们右边、同一条中线上。全屏时去掉 mac-app 标记。
+  // 顶部栏据此排在它们右边、同一条中线上。全屏时没有红黄绿按钮，加上 mac-full 标记，顶部栏不再让位。
+  // 注意不能把 mac-app 去掉：躲开 WebKit 紫线的那些样式（歌词不用模糊滤镜等）也挂在 mac-app 上，全屏时一样要。
   // 是否全屏自己记（isFull），不看窗口当时的状态：进出全屏的动画过程中窗口的状态还没变过来
   var isFull = false
   func syncLights(measure: Bool = true) {
-    var js = "document.documentElement.classList.toggle('mac-app', \(!isFull));"
+    var js = "document.documentElement.classList.add('mac-app'); document.documentElement.classList.toggle('mac-full', \(isFull));"
     if measure, !isFull, let b = window.standardWindowButton(.zoomButton) {
       let r = b.convert(b.bounds, to: nil)
       let set = { (k: String, v: CGFloat) in "document.documentElement.style.setProperty('\(k)', '\(String(format: "%.1f", v))px');" }

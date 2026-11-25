@@ -631,7 +631,9 @@ function renderFocus() {
     copy.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;margin:0;max-width:none;pointer-events:none;animation:none;`;
     copy.setAttribute('aria-hidden', 'true');
     $('#focus-inner').append(copy);
-    copy.animate([{ opacity: 1, transform: 'none', filter: 'blur(0)' }, { opacity: 0, transform: 'translateY(-10px) scale(.985)', filter: 'blur(5px)' }],
+    // Mac App 里淡出时不加模糊：WebKit 的滤镜图层边上会画出紫线（见 style.css 的 .mac-app .line）
+    const blurOut = !document.documentElement.classList.contains('mac-app');
+    copy.animate([{ opacity: 1, transform: 'none', ...(blurOut && { filter: 'blur(0)' }) }, { opacity: 0, transform: 'translateY(-10px) scale(.985)', ...(blurOut && { filter: 'blur(5px)' }) }],
       { duration: 520, easing: 'cubic-bezier(.3, .1, .3, 1)', fill: 'forwards' }).onfinish = () => copy.remove();
   }
   // 上一句 / 下一句的小字会因为中间变矮而挪到新位置：让它们稍后再淡入，不和正在淡出的大字叠在一起
