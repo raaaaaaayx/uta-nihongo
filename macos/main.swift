@@ -124,7 +124,7 @@ final class DragWindow: NSWindow {
   }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler {
   var window: DragWindow!
   var web: WKWebView!
   let server = Server()
@@ -157,6 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     window.toolbar = NSToolbar(identifier: "main")
     window.toolbarStyle = .unified
     window.titlebarSeparatorStyle = .none
+    window.delegate = self // 全屏时让系统把工具栏自动藏起来，见 willUseFullScreenPresentationOptions
     window.contentView = web
     window.center()
     window.setFrameAutosaveName("main")
@@ -169,23 +170,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
       """, baseURL: nil)
 
     // 全屏单独处理：没有红黄绿按钮，界面照浏览器里的样子铺满（「资料库」回到左上角）。
-    // 那条空工具栏也要收起来，不然它会留在屏幕顶上变成一条深色的带子，盖住界面的顶部栏。
-    // 退出时：一开始就让顶部栏先让出位置（免得按钮回来时压在「资料库」上），窗口落定后放回工具栏、重新量位置
+    // 那条空工具栏不能一直露在屏幕顶上（会变成一条深色的带子，盖住界面的顶部栏），
+    // 但也不自己收起来：以前全屏时把它收起、退出动画放完才放回去，动画过程中按钮待在没有工具栏时的位置（最左上角），
+    // 放回工具栏的一瞬间又跳到和「资料库」齐平的地方。现在交给系统：全屏时工具栏跟着菜单栏自动藏起来
+    // （见 willUseFullScreenPresentationOptions），工具栏一直都在，退出全屏时按钮从头到尾都在原来的位置上。
+    // 退出时：一开始就让顶部栏先让出位置（免得按钮回来时压在「资料库」上），窗口落定后再量一次位置
     let nc = NotificationCenter.default
     nc.addObserver(forName: NSWindow.willEnterFullScreenNotification, object: window, queue: .main) { [weak self] _ in
       self?.isFull = true
-      self?.window.toolbar?.isVisible = false
       self?.syncLights()
+    }
+    nc.addObserver(forName: NSWindow.didEnterFullScreenNotification, object: window, queue: .main) { [weak self] _ in
+      // 万一系统没有按「自动藏起工具栏」来（工具栏一直露着），退回以前的办法：全屏时自己收起来
+      guard let self, !NSApp.presentationOptions.contains(.autoHideToolbar) else { return }
+      self.hidToolbar = true
+      self.window.toolbar?.isVisible = false
     }
     nc.addObserver(forName: NSWindow.willExitFullScreenNotification, object: window, queue: .main) { [weak self] _ in
       self?.isFull = false
       self?.syncLights(measure: false)
     }
     nc.addObserver(forName: NSWindow.didExitFullScreenNotification, object: window, queue: .main) { [weak self] _ in
-      self?.isFull = false
-      self?.window.toolbar?.isVisible = true
-      self?.window.layoutIfNeeded()
-      self?.syncLights()
+      guard let self else { return }
+      self.isFull = false
+      if self.hidToolbar { self.hidToolbar = false; self.window.toolbar?.isVisible = true }
+      self.window.layoutIfNeeded()
+      self.syncLights()
     }
     server.onExit = { NSApp.terminate(nil) }
     Task { await boot() }
@@ -196,6 +206,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
   // 注意不能把 mac-app 去掉：躲开 WebKit 紫线的那些样式（歌词不用模糊滤镜等）也挂在 mac-app 上，全屏时一样要。
   // 是否全屏自己记（isFull），不看窗口当时的状态：进出全屏的动画过程中窗口的状态还没变过来
   var isFull = false
+  var hidToolbar = false // 退回的办法：全屏时工具栏是自己收起来的，退出后要放回去
+  // 全屏时工具栏跟着菜单栏自动藏起来、鼠标移到屏幕顶上才和菜单栏一起出现（系统要求同时有 fullScreen 和 autoHideMenuBar）
+  func window(_ window: NSWindow, willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions = []) -> NSApplication.PresentationOptions {
+    proposedOptions.contains(.autoHideMenuBar) ? proposedOptions.union(.autoHideToolbar) : proposedOptions
+  }
   func syncLights(measure: Bool = true) {
     var js = "document.documentElement.classList.add('mac-app'); document.documentElement.classList.toggle('mac-full', \(isFull));"
     if measure, !isFull, let b = window.standardWindowButton(.zoomButton) {
