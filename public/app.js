@@ -834,7 +834,7 @@ for (const ev of ['wheel', 'touchmove']) {
 
 // ---------------- 每一帧：进度条、逐字填充、间奏的三个点 ----------------
 // 这里每秒跑 60 次，所以只在数值真的变了的时候才去改页面，并且尽量只改不会引起重新排版的属性
-const elFill = $('#progress-fill'), elCur = $('#t-cur'), elRem = $('#t-rem');
+const elFill = $('#progress-fill'), elCur = $('#t-cur'), elRem = $('#t-rem'), elSeek = $('#seek');
 const shown = { w: -1, cur: '', rem: '' };
 function setProgress(frac) {
   const w = Math.round(clamp(frac) * 2000) / 2000;
@@ -893,7 +893,11 @@ function tick() {
   const pos = now();
   const dur = S.track?.duration || 0;
   if (!S.dragging) {
-    setProgress(dur ? pos / dur : 0);
+    const frac = dur ? pos / dur : 0;
+    setProgress(frac);
+    // 看不见的滑块也跟着播放位置走：按在看得见的进度头上就是按住了它（不会先跳一下）
+    const v = String(Math.round(clamp(frac) * 1000));
+    if (elSeek.value !== v) elSeek.value = v;
     const cur = fmt(pos), rem = `-${fmt(Math.max(0, dur - pos))}`;
     if (cur !== shown.cur) elCur.textContent = shown.cur = cur;
     if (rem !== shown.rem) elRem.textContent = shown.rem = rem;
@@ -2669,14 +2673,28 @@ document.addEventListener('mousedown', (e) => {
 $('#btn-play').addEventListener('click', () => control('playpause'));
 $('#btn-prev').addEventListener('click', () => control('prev'));
 $('#btn-next').addEventListener('click', () => control('next'));
-const seek = $('#seek');
+const seek = elSeek;
+// 拖进度条：按下以后进度条不再跟着播放走（S.dragging），松手时跳过去。
+// 不能只等 change 事件：WebKit 只有在松手时的值和上一次发 change 时不一样才会发它。拖回上一次拖到的那个点
+// （想重听同一段时很常见）就收不到 change，不跳，S.dragging 也一直留在 true，进度条从此停住不动。
+// 所以松手（pointerup）就算拖完；change 只管键盘（方向键）改的值
+let seekMoved = false;
+seek.addEventListener('pointerdown', () => { S.dragging = true; seekMoved = false; });
 seek.addEventListener('input', () => {
-  S.dragging = true;
+  S.dragging = true; seekMoved = true;
   const dur = S.track?.duration || 0;
   setProgress(seek.value / 1000);
   $('#t-cur').textContent = fmt((seek.value / 1000) * dur);
 });
-seek.addEventListener('change', () => { S.dragging = false; if (S.track) seekTo((seek.value / 1000) * S.track.duration); });
+function endSeekDrag() {
+  if (!S.dragging) return;
+  S.dragging = false;
+  if (seekMoved && S.track) seekTo((seek.value / 1000) * S.track.duration);
+  seekMoved = false;
+}
+seek.addEventListener('change', endSeekDrag);
+addEventListener('pointerup', endSeekDrag, true);
+addEventListener('pointercancel', endSeekDrag, true);
 
 function stepLine(dir) {
   let i = clamp(S.active + dir, 0, S.lines.length - 1);
