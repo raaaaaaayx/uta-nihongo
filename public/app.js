@@ -3318,6 +3318,11 @@ document.addEventListener('dragstart', (e) => {
   const el = e.target.nodeType === 1 ? e.target : e.target.parentElement;
   if (!el?.closest('input, textarea, [contenteditable]')) e.preventDefault();
 });
+// ⌘A 只在输入框里全选：别处按下去不再把整个界面选中（按钮、顶部栏的字会出现选中时的灰底）
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === 'a' || e.key === 'A')
+    && !e.target.closest?.('input, textarea, [contenteditable]')) e.preventDefault();
+});
 
 // 检查更新：每次打开界面问一次本地服务（服务每次启动只去 GitHub 查一次）。有新版本就在顶上露一条，
 // 点「以后再说」就不再提醒这个版本（下一个新版本还会提醒）
