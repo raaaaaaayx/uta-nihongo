@@ -297,6 +297,11 @@ section { position: relative; }
 .cmd code::-webkit-scrollbar { display: none; }
 .cmd button { flex: none; font: 500 13px var(--sans); color: var(--fg); background: var(--tile-2); border: 0; border-radius: 99px; padding: 8px 14px; cursor: pointer; transition: background .2s; }
 .cmd button:hover { background: #2c2c2e; }
+.pick { margin: 44px auto 0; max-width: 760px; }
+.pick .lbl { font-size: 14px; color: var(--fg-3); margin-bottom: 14px; }
+.pick .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.which { max-width: 640px; margin: 14px auto 0; font-size: 13px; color: var(--fg-3); line-height: 1.6; }
+.cmd .lbl b { color: var(--fg); font-weight: 600; }
 .first { margin: 56px auto 0; max-width: 760px; text-align: left; background: var(--tile); border-radius: 24px; padding: 28px 28px 24px; }
 .first h3 { font-size: 21px; margin-bottom: 8px; }
 .first p { margin: 0 0 12px; color: var(--fg-2); font-size: 15px; }
@@ -340,7 +345,7 @@ footer p { margin: 0 0 8px; }
       <a href="#design">设计</a>
       <a href="#specs">规格</a>
     </div>
-    <a class="pill sm" href="https://github.com/raaaaaaayx/uta-nihongo/releases/latest">下载</a>
+    <a class="pill sm" href="#download">下载</a>
   </div>
 </nav>
 
@@ -353,10 +358,10 @@ footer p { margin: 0 0 8px; }
     <h1 class="h-xl rv d1">唱歌学日语</h1>
     <p class="lede rv d2">听着喜欢的歌，<b>就把日语学会了。</b><br>假名、翻译、语法、生词，一句一句跟着唱出来。</p>
     <div class="cta rv d3">
-      <a class="pill lg" href="https://github.com/raaaaaaayx/uta-nihongo/releases/latest">免费下载</a>
+      <a class="pill lg" href="#download">免费下载</a>
       <a class="more" href="#tour">了解更多</a>
     </div>
-    <p class="sub rv d3">适用于 Apple 芯片 Mac · macOS 12 或更新 · 开源</p>
+    <p class="sub rv d3">适用于 Apple 芯片和 Intel 芯片的 Mac · macOS 13.5 或更新 · 开源</p>
   </div>
   <div class="stage">
     <div class="mac" id="hero-mac" aria-label="唱歌学日语的界面示意：大字歌词带假名注音、逐字填色、中文翻译和词汇语法标注">
@@ -501,7 +506,7 @@ footer p { margin: 0 0 8px; }
     <div class="head">
       <p class="eyebrow rv">界面设计</p>
       <h2 class="h-l rv d1">通透，<span class="grad">随歌而动。</span></h2>
-      <p class="lede rv d2">半透明的玻璃质感面板，透出身后流动的颜色。背景从专辑封面里取出真正的主色，按占比缓缓流动，每首歌都是不同的样子；歌词像 Apple Music 一样，离正在唱的那句越远越虚。</p>
+      <p class="lede rv d2">半透明的玻璃质感面板，透出身后流动的颜色。背景从专辑封面里取出真正的主色，按占比缓缓流动，每首歌都是不同的样子（在「设置 → 动画」里打开「流动背景」）；歌词像 Apple Music 一样，离正在唱的那句越远越虚。</p>
     </div>
     <div class="aquarium rv">
       <div class="mac" style="position:absolute;inset:0;border-radius:0;aspect-ratio:auto;box-shadow:none"><div class="bg"><i></i><i></i><i></i><i></i></div></div>
@@ -531,7 +536,7 @@ footer p { margin: 0 0 8px; }
       <div class="tile s4 app-tile rv">
         <img src="icon.png" alt="">
         <h4>真正的 Mac App，<br>不用开浏览器。</h4>
-        <p>用系统自带的 WebKit 开独立窗口，Node.js 打包在 App 里，<b>下载即用</b>。词汇书、设置都存在本机；每次打开都会检查新版本，有更新就提醒你。</p>
+        <p>用系统自带的 WebKit 开独立窗口，Node.js 打包在 App 里，<b>下载即用</b>。词汇书、设置都存在本机；每次打开都会检查新版本，有更新点一下就自动装好。</p>
       </div>
       <div class="tile s2 rv d1">
         <div class="k1">内置语法规则</div>
@@ -580,11 +585,11 @@ footer p { margin: 0 0 8px; }
   <div class="wrap">
     <h2 class="h-m">技术规格</h2>
     <dl>
-      <div class="spec"><dt>系统要求</dt><dd><b>Apple 芯片（M 系列）Mac</b><br>macOS 12 Monterey 或更新</dd></div>
+      <div class="spec"><dt>系统要求</dt><dd><b>Apple 芯片（M 系列）或 Intel 芯片的 Mac</b><br>macOS 13.5 Ventura 或更新</dd></div>
       <div class="spec"><dt>支持的播放器</dt><dd><ul><li>Apple Music：资料库、播放列表、专辑浏览、播放队列</li><li>网易云音乐 Mac 版：当前歌曲与进度、按歌曲 ID 精确取词</li><li>自动模式：哪个在播跟哪个</li></ul></dd></div>
       <div class="spec"><dt>歌词</dt><dd>自动从网易云音乐、QQ 音乐匹配；有逐字时间轴时按字填色，否则逐行。可手动换源或搜索。</dd></div>
       <div class="spec"><dt>注音与释义</dt><dd>本地词库自动注音，并用歌词源的罗马音纠正实际唱法；中文释义来自有道日汉词典，JLPT 级别与英文释义来自 Jisho。</dd></div>
-      <div class="spec"><dt>下载大小</dt><dd>约 70 MB（已包含运行环境，无需另装 Node.js）</dd></div>
+      <div class="spec"><dt>下载大小</dt><dd>约 75 MB（已包含运行环境，无需另装 Node.js）</dd></div>
       <div class="spec"><dt>价格</dt><dd><b>免费</b>，MIT 开源许可</dd></div>
     </dl>
   </div>
@@ -595,14 +600,23 @@ footer p { margin: 0 0 8px; }
   <div class="wrap">
     <img class="icon rv" src="icon.png" alt="唱歌学日语图标">
     <h2 class="h-xl rv d1">现在，<span class="grad">开唱。</span></h2>
-    <p class="lede rv d2">下载后解压，把「唱歌学日语」拖进「应用程序」，双击打开。以后有新版本，打开时会自动提醒你。</p>
-    <div class="cta rv d3">
-      <a class="pill lg" href="https://github.com/raaaaaaayx/uta-nihongo/releases/latest/download/uta-nihongo-macOS-arm64.zip">下载 Mac App</a>
-      <a class="more" href="https://github.com/raaaaaaayx/uta-nihongo">在 GitHub 查看源码</a>
+    <p class="lede rv d2">两种装法，任选其一。以后有新版本，App 打开时会提醒你，点一下就自动更新。</p>
+    <div class="cmd rv d3">
+      <div class="lbl"><b>推荐：</b>在「终端」里粘贴这一行，回车。自动认出你的 Mac 是哪种芯片，装好直接打开，不会被系统拦</div>
+      <div class="box"><code id="cmd">curl -fsSL https://raw.githubusercontent.com/raaaaaaayx/uta-nihongo/main/install-app.sh | bash</code><button type="button" id="copy">拷贝</button></div>
+    </div>
+    <div class="pick rv d3">
+      <div class="lbl">或者自己下载安装包：</div>
+      <div class="cta">
+        <a class="pill lg" href="https://github.com/raaaaaaayx/uta-nihongo/releases/latest/download/uta-nihongo-macOS-arm64.zip">下载 Apple 芯片版</a>
+        <a class="pill lg ghost" href="https://github.com/raaaaaaayx/uta-nihongo/releases/latest/download/uta-nihongo-macOS-x64.zip">下载 Intel 芯片版</a>
+      </div>
+      <p class="which">不知道是哪种？点屏幕左上角的苹果标志 → 关于本机：「芯片」写着 Apple M… 的选 Apple 芯片版；「处理器」写着 Intel 的选 Intel 芯片版。</p>
+      <p class="which">下载后解压，把「唱歌学日语」拖进「应用程序」，双击打开。</p>
     </div>
     <div class="first rv d3">
-      <h3>第一次打开被 macOS 拦下来？</h3>
-      <p>这个 App 没有经过苹果公证，第一次打开时会提示「无法验证开发者」。放行一次，之后就能正常打开：</p>
+      <h3>自己下载的，第一次打开被 macOS 拦下来？</h3>
+      <p>这个 App 没有经过苹果公证，自己下载的安装包第一次打开时会提示「无法验证开发者」（用上面那行命令装的不会）。放行一次，之后就能正常打开：</p>
       <ol>
         <li><b>macOS 15 及更新：</b>先双击打开一次（会被拦），然后到「系统设置 → 隐私与安全性」，往下找到「唱歌学日语」那一行，点<b>仍要打开</b>，输入密码。</li>
         <li><b>macOS 14 及更早：</b>在「应用程序」里右键 App → 打开 → 再点「打开」。</li>
@@ -610,10 +624,7 @@ footer p { margin: 0 0 8px; }
       </ol>
       <div class="box"><code id="cmd2">xattr -dr com.apple.quarantine /Applications/唱歌学日语.app</code><button type="button" data-copy="cmd2">拷贝</button></div>
     </div>
-    <div class="cmd rv d3">
-      <div class="lbl">或者在「终端」里一行安装（需要 Node.js）</div>
-      <div class="box"><code id="cmd">curl -fsSL https://raw.githubusercontent.com/raaaaaaayx/uta-nihongo/main/install.sh | bash</code><button type="button" id="copy">拷贝</button></div>
-    </div>
+    <p class="which rv d3"><a href="https://github.com/raaaaaaayx/uta-nihongo">在 GitHub 查看源码</a></p>
   </div>
 </section>
 
