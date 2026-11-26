@@ -64,7 +64,9 @@ function evaluate(expression, timeout = 3000) {
 // ---------- 放进网易云页面里的小助手 ----------
 // 只装一次（页面重新载入后会重装）。snap() 返回当前状态；cmd() 执行控制命令。
 const AGENT = `(() => {
-  if (window.__uta && window.__uta.v === 7) return 'ok';
+  // 已经装着同样或更新的就不动：万一同时开着两份程序、版本不一样，新的那份装的不会被这份换回旧的
+  // （每换一次进度都要清零重来，两份来回换的话进度就一直是坏的）
+  if (window.__uta && window.__uta.v >= 7) return 'ok';
   const findStore = () => {
     const root = document.querySelector('#root') || document.body.firstElementChild;
     if (!root) return null;

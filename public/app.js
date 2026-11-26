@@ -75,6 +75,8 @@ function onState(s) {
   if (s.bye) return showBye();
   if (s.focus) return window.focus(); // 点了程序坞图标：程序把浏览器叫到了前面，这里尽量让这个窗口排到最上
   if (s.close) return window.close(); // 界面换到别的浏览器重新打开了：这个窗口自己关掉
+  // 这首歌的歌词在后台补上了逐字时间（见 server/lyrics.js 的 withQrc）：正在显示的就是它的话，重新载入换成逐字的
+  if (s.lyrics) { if (S.song?.key === s.lyrics) reloadSong(); return; }
   if ('queue' in s) onQueue(s.queue);
   // 自动模式：现在跟着的是哪个播放器（提示文字里用它的名字）
   if (s.source && PLAYER.id === 'auto') PLAYER.name = SRC_NAME[s.source];
@@ -168,7 +170,7 @@ async function loadSong(track, { refresh = false, keep = false } = {}) {
   S.active = -2;
   updateOffsetLabel();
   const srcName = { netease: '网易云', qq: 'QQ音乐' }[song.source?.source] || '';
-  $('#src-badge').textContent = song.lines.length ? [srcName, song.flags?.words ? '逐字' : '逐行', song.ai ? 'AI' : ''].filter(Boolean).join(' · ') : '';
+  $('#src-badge').textContent = song.lines.length ? [srcName, song.flags?.words ? (song.flags.qrc ? 'QRC' : '逐字') : '逐行', song.ai ? 'AI' : ''].filter(Boolean).join(' · ') : '';
   if (!song.lines.length) {
     setStatus(`${song.error ? esc(song.error) + '<br>' : ''}没有找到这首歌的歌词（可能是纯音乐）。<br><button class="btn" onclick="document.getElementById('btn-source').click()">手动选择歌词源</button>`);
   } else setStatus('');
@@ -538,6 +540,8 @@ function clearHold(s) {
 let holdTail = [];
 
 // ---------------- 渲染歌词 ----------------
+// 西文字体里也有、但日文里要按日文排版（居中、占一格）的符号：一般标点（‐—…“”‘’•※ 等）和各种符号（→☆★♪♡ 等）
+const PUNCT_JA = /[\u2010-\u205E\u2100-\u27BF]/;
 function jpHTML(line, li) {
   if (line.gap) return '<span class="dots"><span class="dots-g"><i></i><i></i><i></i></span></span>';
   let html = '';
@@ -569,7 +573,8 @@ function jpHTML(line, li) {
       }
       else for (const ch of seg.t) {
         const tm = !ruby && line.ct?.[ci];
-        chars += `<span class="ch${tm ? ' fu' : ''}" data-c="${ci}"${tm ? unit(tm[0], tm[1], ci) : ''}>${esc(ch)}</span>`;
+        // pj：省略号、破折号、弯引号、☆♪ 这类符号。Mac App 的滚动歌词用系统字体，这些符号要单独指回日文字体（见 style.css 的 .pj）
+        chars += `<span class="ch${tm ? ' fu' : ''}${PUNCT_JA.test(ch) ? ' pj' : ''}" data-c="${ci}"${tm ? unit(tm[0], tm[1], ci) : ''}>${esc(ch)}</span>`;
         ci += ch.length;
       }
       const whole = ruby && !parts && line.ct?.[c0] ? unit(line.ct[c0][0], (line.ct[ci - 1] || line.ct[c0])[1], c0) : '';
@@ -631,7 +636,7 @@ function renderFocus() {
     copy.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;margin:0;max-width:none;pointer-events:none;animation:none;`;
     copy.setAttribute('aria-hidden', 'true');
     $('#focus-inner').append(copy);
-    // Mac App 里淡出时不加模糊：WebKit 的滤镜图层边上会画出紫线（见 style.css 的 .mac-app .line）
+    // Mac App 里淡出时不加模糊：WebKit 的滤镜图层边上会画出紫线（见 style.css 里 Mac App 那几处拿掉滤镜的说明）
     const blurOut = !document.documentElement.classList.contains('mac-app');
     copy.animate([{ opacity: 1, transform: 'none', ...(blurOut && { filter: 'blur(0)' }) }, { opacity: 0, transform: 'translateY(-10px) scale(.985)', ...(blurOut && { filter: 'blur(5px)' }) }],
       { duration: 520, easing: 'cubic-bezier(.3, .1, .3, 1)', fill: 'forwards' }).onfinish = () => copy.remove();
@@ -2401,7 +2406,7 @@ async function openSource(q = '') {
   const cur = S.song?.source;
   $('#src-list').innerHTML = list.length ? list.map((c, i) => {
     const f = c.flags;
-    const tags = f ? (f.lines ? [f.trans && '翻译', f.words && '逐字', f.roma && '注音'].filter(Boolean).map((x) => `<b>${x}</b>`).join('') || '<span>仅原文</span>' : '<span>无歌词</span>') : '';
+    const tags = f ? (f.lines ? [f.trans && '翻译', f.words && (f.qrc ? 'QRC' : '逐字'), f.roma && '注音'].filter(Boolean).map((x) => `<b>${x}</b>`).join('') || '<span>仅原文</span>' : '<span>无歌词</span>') : '';
     return `<div class="cand${cur && cur.source === c.source && cur.id === c.id ? ' cur' : ''}" data-i="${i}">
       <span class="src">${c.source === 'qq' ? 'QQ音乐' : '网易云'}</span><div class="t">${esc(c.title)}</div>
       <div class="x">${fmt(c.duration)}${tags}</div><div class="a">${esc(c.artists.join(' / '))}${c.album ? ' — ' + esc(c.album) : ''}</div></div>`;
@@ -2461,6 +2466,7 @@ async function openSettings() {
     $('#set-browser-apply').hidden = true;
     $('#set-player').value = s.player;
     $('#set-player-apply').hidden = s.player === s.playerInUse;
+    $('#set-qrc').checked = s.qrc !== false;
   } catch { /* 忽略 */ }
 }
 function onAnnPrefChange() {
@@ -2536,6 +2542,11 @@ $('#set-browser').addEventListener('change', async (e) => {
   try { await api.post('/api/settings', { browser: e.target.value }); } catch (err) { return toast(`保存失败：${err.message}`); }
   $('#set-browser-apply').hidden = false;
   toast('已保存，下次打开界面时生效');
+});
+// 解析 QRC（QQ 音乐的逐字歌词）：取歌词的是服务端，所以存在服务端；改了以后把正在放的这首重新载入，马上看到效果
+$('#set-qrc').addEventListener('change', async (e) => {
+  try { await api.post('/api/settings', { qrc: e.target.checked }); } catch (err) { e.target.checked = !e.target.checked; return toast(`保存失败：${err.message}`); }
+  reloadSong();
 });
 // 播放器：Apple Music / 网易云音乐。换了要重启程序才生效（界面会自动刷新）
 $('#set-player').addEventListener('change', async (e) => {

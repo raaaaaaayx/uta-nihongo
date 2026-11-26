@@ -11,7 +11,7 @@ import {
 import * as appleMusic from './music.js';
 import * as netease from './netease.js';
 import * as auto from './auto.js';
-import { findCandidates, pickBest, fetchLyrics } from './lyrics.js';
+import { findCandidates, pickBest, fetchLyrics, withQrc, lyricFlags } from './lyrics.js';
 import { analyzeLyrics, getTokenizer } from './japanese.js';
 import { ensureDesktopShortcut } from './shortcut.js';
 import { createQueue } from './queue.js';
@@ -89,9 +89,11 @@ async function loadSong(track, { refresh = false } = {}) {
   let cand = meta.source;
   let lyrics = null;
   let error = null;
+  let qqPool = null; // 这次自动找歌词时搜到的 QQ 条目（补逐字时用，省得再搜一遍）
   try {
     if (!cand || refresh) {
       const cands = await findCandidates(track);
+      qqPool = cands.filter((c) => c.source === 'qq');
       // 网易云模式下知道正在播的这首在网易云里的 ID：直接用它的歌词，不靠搜索去猜
       if (track.neteaseId) {
         const exact = cands.find((c) => c.source === 'netease' && c.id === track.neteaseId);
@@ -103,11 +105,13 @@ async function loadSong(track, { refresh = false } = {}) {
       else cand = null;
     }
     if (cand) lyrics = await fetchLyrics(cand, refresh);
+    // 没有逐字时间的：用 QQ 音乐的逐字歌词补上（设置 → 更多 → 解析 QRC；补不了就还是原来那份）
+    if (cand && lyrics) lyrics = await withQrc(lyrics, cand, track, { refresh, pool: qqPool, onLate: () => broadcast({ lyrics: key }) });
   } catch (e) { error = e.message; }
 
   const out = { key, track, source: cand, offset: meta.offset || 0, hiddenAnn: meta.hiddenAnn || [], senses: meta.senses || {}, lines: [], error, aiAvailable: aiAvailable(), ai: false };
   if (!lyrics || !lyrics.lines.length) return out;
-  out.flags = lyrics.flags;
+  out.flags = lyricFlags(cand, lyrics);
   if (lyrics.flags.japanese) {
     const res = await analyzeLyrics(lyrics.lines, { kana: lyrics.kana, meta, userDict: getUserDict() });
     out.lines = res.lines;
@@ -149,6 +153,8 @@ function cacheFiles() {
 }
 
 const sseClients = new Set();
+// 给所有开着的界面发一条消息
+const broadcast = (msg) => { for (const c of sseClients) c.write(`data: ${JSON.stringify(msg)}\n\n`); };
 // 其中由程序自己打开的界面窗口（地址带 ?app=1）。别的页面（比如另外在浏览器里手动打开的）不算，
 // 否则窗口明明关了，程序还以为它开着
 const appClients = new Set();
@@ -239,7 +245,7 @@ const routes = {
     const track = { name: q.get('name') || '', artist: q.get('artist') || '', duration: Number(q.get('duration')) || 0 };
     const cands = await findCandidates(track, q.get('q') || '');
     await Promise.all(cands.slice(0, 8).map(async (c) => {
-      try { c.flags = (await fetchLyrics(c)).flags; } catch { /* 忽略单个失败 */ }
+      try { c.flags = lyricFlags(c, await fetchLyrics(c)); } catch { /* 忽略单个失败 */ }
     }));
     send(res, 200, cands.map(slimCand));
   },
@@ -379,6 +385,7 @@ const routes = {
       model: s.model, hasKey: !!s.apiKey, keyTail: s.apiKey ? s.apiKey.slice(-4) : '', envKey: !!process.env.ANTHROPIC_API_KEY,
       player: ['apple', 'netease'].includes(s.player) ? s.player : 'auto', playerInUse: PLAYER,
       browser: s.browser || 'auto', browsers: installedBrowsers(), browserInUse: pickBrowser(s.browser),
+      qrc: s.qrc !== false,
     });
   },
   'POST /api/settings': async (req, res) => {
@@ -387,6 +394,7 @@ const routes = {
     if (typeof body.apiKey === 'string') patch.apiKey = body.apiKey.trim();
     if (typeof body.model === 'string' && body.model.trim()) patch.model = body.model.trim();
     if (['auto', 'apple', 'netease'].includes(body.player)) patch.player = body.player;
+    if (typeof body.qrc === 'boolean') patch.qrc = body.qrc;
     if (typeof body.browser === 'string' && (['auto', 'default'].includes(body.browser) || installedBrowsers().includes(body.browser))) patch.browser = body.browser;
     saveSettings(patch);
     send(res, 200, { ok: true });
@@ -438,3 +446,10 @@ server.listen(PORT, '127.0.0.1', () => {
   getTokenizer().catch((e) => console.error('词典加载失败：', e.message));
 });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { music.stopWatcher(); process.exit(0); });
+// Mac App 里的服务是 App 带起来的：App 没了（被强制退出、崩溃、被 kill）就跟着退出。
+// 不然会留下一个没人管的后台服务，一直占着端口、连着播放器——它要是旧版本，还会和新开的那份抢着改网易云里的小助手
+//（两边版本号不同就互相覆盖，进度被反复清零）。父进程没了以后 process.ppid 会变
+if (process.env.UTA_APP) {
+  const parent = process.ppid;
+  setInterval(() => { if (process.ppid !== parent) { music.stopWatcher(); process.exit(0); } }, 3000).unref();
+}

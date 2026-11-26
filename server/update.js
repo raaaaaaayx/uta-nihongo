@@ -22,7 +22,7 @@ const FEED = process.env.UTA_UPDATE_FEED || `https://api.github.com/repos/${REPO
 
 // 按语义化版本比大小：1.0.3-netease.10 > 1.0.3-netease.9；正式版 1.0.4 > 1.0.3-netease.N
 function parse(v) {
-  const m = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/.exec(String(v).trim());
+  const m = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(String(v).trim());
   if (!m) return null;
   return { core: [+m[1], +m[2], +m[3]], pre: m[4] ? m[4].split('.') : [] };
 }
@@ -123,21 +123,22 @@ export async function installUpdate(quit) {
     // 小脚本：等 App（node 的父进程）退出 → 旧的挪开、新的放上 → 成功就删掉旧的，失败就放回旧的 → 打开
     const sh = path.join(dir, 'swap.sh');
     fs.writeFileSync(sh, `#!/bin/bash
-PID="$1"; OLD="$2"; NEW="$3"; LOG="$4"
+PID="$1"; OLD="$2"; NEW="$3"; LOG="$4"; VER="$5"; TMP="$6"
 for i in $(seq 1 150); do kill -0 "$PID" 2>/dev/null || break; sleep 0.1; done
 BAK="$OLD.updating-$$"
 if mv "$OLD" "$BAK" && mv "$NEW" "$OLD"; then
-  rm -rf "$BAK"; echo "$(date) 已更新到 ${u.latest}" >> "$LOG"
+  rm -rf "$BAK"; echo "$(date) 已更新到 $VER" >> "$LOG"
 else
   [ -d "$BAK" ] && [ ! -d "$OLD" ] && mv "$BAK" "$OLD"
   echo "$(date) 自动更新失败，还是旧版本" >> "$LOG"
 fi
 xattr -dr com.apple.quarantine "$OLD" 2>/dev/null
 open "$OLD"
-rm -rf "${dir}"
+case "$TMP" in */uta-update-*) rm -rf "$TMP" ;; esac
 `);
     const log = path.join(process.env.UTA_DATA || os.tmpdir(), 'app.log');
-    spawn('/bin/bash', [sh, String(process.ppid), bundle, next, log], { detached: true, stdio: 'ignore' }).unref();
+    // 版本号、临时目录都当参数传给脚本，不拼进脚本的文字里：版本号来自发布的标签名，拼进去的话标签名里的特殊字符会被当成命令执行
+    spawn('/bin/bash', [sh, String(process.ppid), bundle, next, log, u.latest, dir], { detached: true, stdio: 'ignore' }).unref();
     setTimeout(quit, 300); // 先让界面拿到「正在重启」
   } catch (e) {
     installing = false;

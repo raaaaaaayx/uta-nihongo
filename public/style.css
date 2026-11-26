@@ -189,10 +189,14 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 .mac-app :is(#app, #morph-ghost):not(.dict-mode):not(.edit-mode) #scroll:not(.free) .line:not(.active):not(.co):not(.gap) { color: rgba(255, 255, 255, .01); text-shadow: 0 0 var(--bl) var(--fg-2), 0 0 var(--bl) var(--fg-3); }
 /* 字的颜色不能是全透明：WebKit 遇到全透明的字连阴影一起不画，所以留 1% */
 /* 换样式的动画里，原来那页歌词会抄一份（#morph-ghost）盖在原处慢慢淡出：那一份也得是虚的，不然清楚的旧歌词和大字叠在一起 */
-/* 滚动歌词的日文在 Mac App 里统一用系统字体（英文、数字是 SF，日文落到系统给的 Hiragino）：
-   「Uta JP」（只管日文字的那个本地字体，见文件开头）在 WebKit 里配上文字阴影几乎画不出来，虚化的行就看不见了；
-   只给虚化的行换字体又不行——两种字体的字宽不一样，唱到这一句时会突然变大变小、跳一下。所以每一行（包括正在唱的）都用同一套 */
+/* 滚动歌词在 Mac App 里统一用系统字体（英文、数字是 SF，假名、汉字落到系统给的 Hiragino，和别处看起来一样）：
+   「Uta JP」（见文件开头，日文字、日文标点走 Hiragino 的那个本地字体）在 WebKit 里配上文字阴影画不出来，虚化的行整行看不见
+   （实测过：换字重、调透明度、去掉 inline-block、去掉 background-clip 都不行）。只给虚化的行换字体又会在唱到时跳一下，所以每一行都用同一套。
+   但系统字体排在前面，省略号、破折号、弯引号、☆♪ 这些符号就归了 SF，成了英文排版的样子（窄、省略号沉在底下）。
+   所以这些符号单独指回日文字体：app.js 的 jpHTML 给它们加了 pj 这个 class，这里直接点名用 Hiragino
+   （直接点名的系统字体没有上面那个问题，虚化时照样画得出来） */
 .mac-app :is(#app, #morph-ghost) #scroll .line .jp { font-family: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; }
+.mac-app :is(#app, #morph-ghost) #scroll .line .jp .pj { font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif; }
 .mac-app #scroll .line .ann { color: var(--fg); text-shadow: none; } /* 标注卡片不虚化 */
 .line.active .ann { animation: ann-in .5s .12s cubic-bezier(.2, .8, .2, 1) backwards; }
 @keyframes ann-in { from { opacity: 0; transform: translateY(6px); } }
@@ -301,7 +305,7 @@ ruby { ruby-align: center; }
 #focus-inner { width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.8vh; }
 .f-prev, .f-next { color: var(--fg-3); font: 600 clamp(15px, 1.7vw, 24px)/1.6 var(--font-ja); min-height: 1.6em; filter: blur(.6px); max-width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .f-prev, .f-next { cursor: pointer; }
-/* Mac App 里剩下几处模糊滤镜也拿掉（原因见 .mac-app .line 那里：WebKit 的滤镜图层边上会画出紫线）：
+/* Mac App 里这几处模糊滤镜拿掉（WebKit 给带滤镜的元素单独开一个图层，图层边上偶尔会画出一条紫色的细线）：
    大字样式的上一句 / 下一句、KTV 样式封面的倒影、词汇书记忆模式的遮挡（遮挡改成和歌词一样的文字阴影） */
 .mac-app .f-prev, .mac-app .f-next { filter: none; }
 .mac-app #k-refl { filter: none; opacity: .22; }

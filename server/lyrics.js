@@ -1,6 +1,8 @@
 // 歌词获取：网易云音乐 / QQ 音乐。搜索 → 打分匹配 → 拉取歌词（原文 / 中文翻译 / 罗马音 / 逐字）。
 import { execFile } from 'node:child_process';
 import { readJSON, writeJSON, safeName } from './store.js';
+import { getSettings } from './store.js';
+import { decryptQrc, qrcContent, parseQrc, qrcKana, mergeWords } from './qrc.js';
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
@@ -346,12 +348,37 @@ async function fetchNetease(id) {
   return { lines: buildLines(lrc, parseLRC(j.tlyric?.lyric), parseLRC(j.romalrc?.lyric), parseYRC(j.yrc?.lyric)) };
 }
 
+// 设置 → 更多 →「解析 QRC」：用 QQ 音乐的逐字歌词（见 qrc.js）。默认开
+export const qrcEnabled = () => getSettings().qrc !== false;
+// QQ 的歌词接口。qrc = true：要逐字版，返回的 lyric / trans / roma 是密文（十六进制）；false：原来的明文逐行歌词（base64）
+const qqLyric = (mid, songId, qrc) => qqCall({
+  module: 'music.musichallSong.PlayLyricInfo',
+  method: 'GetPlayLyricInfo',
+  param: qrc
+    ? { songMID: mid, songID: songId || 0, trans: 1, roma: 1, qrc: 1, crypt: 1, lrc_t: 0, trans_t: 0, roma_t: 0, qrc_t: 0, type: 0, ct: 19, cv: 1859 }
+    : { songMID: mid, songID: songId || 0, trans: 1, roma: 0, qrc: 0, crypt: 0, lrc_t: 0, trans_t: 0, roma_t: 0, type: 0, ct: 19, cv: 1859 },
+});
+// 逐字版。解出来不一定真有逐字：没有逐字的歌是普通的逐行歌词，照内容判断
+async function fetchQQWords(mid, songId) {
+  const d = await qqLyric(mid, songId, true);
+  const lyricText = qrcContent(decryptQrc(d.lyric));
+  let transText = '';
+  try { if (d.trans) transText = qrcContent(decryptQrc(d.trans)); } catch { /* 翻译解不开：当作没有翻译 */ }
+  const yrc = parseQrc(lyricText);
+  // 有逐字：行按逐字歌词的行来（文字 = 各个字连起来），时间由 buildLines 挂上去
+  const lrc = yrc.length ? yrc.map((y) => ({ t: y.t, text: y.words.map((w) => w.text).join('').trim() })) : parseLRC(lyricText);
+  // 翻译开头那句「以下歌词翻译由…提供」不是歌词
+  const trans = parseLRC(transText).filter((e) => !/^以下歌词翻译由.*提供$/.test(e.text));
+  const out = { lines: buildLines(lrc, trans, [], yrc), qrc: 1 }; // qrc: 1 = 这份是按逐字版取的（没有逐字时间也算取过了）
+  const kana = (/\[kana:([^\]]*)\]/.exec(transText) || [])[1] || qrcKana(lyricText);
+  if (kana) out.kana = { raw: kana, allText: lrc.map((e) => e.text) };
+  return out;
+}
+
 async function fetchQQ(mid, songId) {
-  const d = await qqCall({
-    module: 'music.musichallSong.PlayLyricInfo',
-    method: 'GetPlayLyricInfo',
-    param: { songMID: mid, songID: songId || 0, trans: 1, roma: 0, qrc: 0, crypt: 0, lrc_t: 0, trans_t: 0, roma_t: 0, type: 0, ct: 19, cv: 1859 },
-  });
+  // 接口不是公开的，随时可能变：逐字版取不到、解不开，就退回原来的逐行歌词
+  if (qrcEnabled()) { try { return await fetchQQWords(mid, songId); } catch { /* 往下走 */ } }
+  const d = await qqLyric(mid, songId, false);
   const b64 = (s) => Buffer.from(s || '', 'base64').toString('utf8');
   const lyricText = b64(d.lyric);
   const transText = b64(d.trans);
@@ -363,13 +390,11 @@ async function fetchQQ(mid, songId) {
   return out;
 }
 
-// 缓存的歌词按这个版本号认：整理歌词的规则改了就加 1，旧缓存会重新取一次
-const LYRICS_V = 2;
 export async function fetchLyrics(cand, refresh = false) {
   const file = `lyrics/${cand.source}-${safeName(cand.id)}.json`;
   if (!refresh) {
     const hit = readJSON(file, null);
-    if (hit && hit.v >= LYRICS_V) return hit; // 旧版本整理出来的缓存（比如重复句的时间配错了）重新取
+    if (hit) return hit;
   }
   const data = cand.source === 'qq' ? await fetchQQ(cand.id, cand.songId) : await fetchNetease(cand.id);
   const text = data.lines.map((l) => l.text).join('');
@@ -380,7 +405,6 @@ export async function fetchLyrics(cand, refresh = false) {
     roma: data.lines.some((l) => l.roma) || !!data.kana,
     words: data.lines.some((l) => l.ct),
   };
-  data.v = LYRICS_V;
   if (data.lines.length) writeJSON(file, data);
   return data;
 }
@@ -398,8 +422,116 @@ export async function pickBest(candidates) {
   }));
   for (const c of top) {
     if (!c.flags || !c.flags.lines) continue;
-    const v = c.score + (c.flags.trans ? 14 : 0) + (c.flags.words ? 10 : 0) + (c.flags.roma ? 3 : 0) + (c.flags.japanese ? 4 : 0);
+    // QQ 的逐字（QRC）不加这 10 分：它可以补到网易云的歌词上（见 withQrc），不必为了逐字放弃网易云的翻译和罗马音
+    const v = c.score + (c.flags.trans ? 14 : 0) + (c.flags.words && c.source !== 'qq' ? 10 : 0) + (c.flags.roma ? 3 : 0) + (c.flags.japanese ? 4 : 0);
     if (!best || v > best.v) best = { v, c };
   }
   return best ? best.c : null;
+}
+
+// ---------------- QQ 的逐字歌词（QRC）补到别的歌词上 ----------------
+// 网易云的歌词没有逐字时间时，到 QQ 音乐找同一首歌，把它的逐字时间对到网易云这份歌词上（文字、翻译、罗马音都还是网易云的）。
+// QQ 的搜索接口（searchQQ 用的那个）限流很紧：查不了几次就不再返回结果，十来分钟才恢复。
+// 所以找歌优先用另一个轻量的「搜索联想」接口（searchQQLite）：它只给歌名、歌手、编号，没有时长，但实测主搜索被限时它照常能用；
+// 找到的是不是同一首歌、同一个录音，反正要靠歌词文字和时间对不对得上来确认（mergeWords），不靠时长。另外：
+//   - 只在真的没有逐字时才去查，查到的另存一份（lyrics/qrc-…json），以后直接用；
+//   - 新歌自动找歌词时本来就搜过一遍 QQ（findCandidates）：直接用那批结果（pool），不再搜第二遍；
+//   - 两次查询之间至少隔 QRC_GAP；还没到时间的这次就先用逐行的，下次载入这首歌再说；
+//   - 两个搜索接口都没有返回结果，多半是被限流了：不记成「QQ 没有」，这首歌过 QRC_RETRY 再试，
+//     而且接下来 QRC_PAUSE 之内哪首歌都不查（限流的时候接着问只会拖得更久）；
+//   - 这次等不及（超过 wait）先给了逐行的：后台查完以后通过 onLate 告诉调用的地方，界面可以马上换成逐字的；
+//   - 只有「搜到了歌，但它没有逐字 / 歌词对不上」才记下来，QRC_NONE_TTL 之内不再查。
+// 任何一步出错都原样返回传进来的歌词：宁可没有逐字，也不能让整首歌没歌词。
+const QRC_V = 2; // 2：按字对齐（分行不同、大小写不同的也对得上）。旧规则记下的「没有」作废，重新查
+const QRC_GAP = 6 * 1000, QRC_PAUSE = 5 * 60 * 1000, QRC_RETRY = 10 * 60 * 1000, QRC_NONE_TTL = 14 * 86400 * 1000;
+let qrcNextAt = 0;
+const qrcFailed = new Map(); // 歌 → 上次没查成是什么时候
+const qrcJobs = new Map();   // 歌 → 正在查的那一次
+// 对得上才用：至少 4 行，而且四成以上的行都挂上了逐字时间（一边多写了和声、念白的歌，对不上的行会多一些）
+function applyWords(lyrics, yrc) {
+  const m = mergeWords(lyrics.lines, yrc);
+  if (m.matched < 4 || m.matched < m.total * 0.4) return null;
+  return { ...lyrics, lines: m.lines, flags: { ...lyrics.flags, words: true }, qrc: 1 };
+}
+const stripWords = (lyrics) => ({ ...lyrics, lines: lyrics.lines.map(({ ct, ...l }) => l), flags: { ...lyrics.flags, words: false } });
+// QQ 的「搜索联想」（搜索框下拉提示用的接口）：只返回几条最像的，每条只有歌名、歌手、编号
+async function searchQQLite(query) {
+  const j = await getJSON(`https://c.y.qq.com/splcloud/fcgi-bin/smartbox_new.fcg?format=json&inCharset=utf-8&outCharset=utf-8&platform=yqq.json&key=${encodeURIComponent(query)}`, { headers: { Referer: 'https://y.qq.com/' } });
+  return (j.data?.song?.itemlist || []).filter((x) => x.mid && x.name).map((x) => ({
+    source: 'qq', id: x.mid, songId: Number(x.id) || 0, title: x.name, alias: [], artists: String(x.singer || '').split(/\s*[\/、,，]\s*/).filter(Boolean), album: '', duration: 0, lite: 1,
+  }));
+}
+async function qrcFromQQ(lyrics, cand, track, file, pool) {
+  const title = cand.title || track?.name || '';
+  const artists = cand.artists?.length ? cand.artists : track?.artist ? [track.artist] : [];
+  if (!title && !pool) return null;
+  // pool：刚才自动找歌词时搜到的 QQ 条目（已经按这首歌打过分）。有就不再搜；
+  // 没有（或者那次搜索被限流了，是空的）就按网易云这条的歌名、歌手去搜：先用联想接口，它也没有才用主搜索
+  let list = pool?.length ? pool : null;
+  if (!list && title) {
+    const ref = { name: title, artist: artists.join(' / '), duration: cand.duration || track?.duration || 0 };
+    const names = { titles: [norm(title)], artists: artists.map(norm), tags: [titleTags(title)], albums: [cand.album].filter(Boolean) };
+    const query = `${cleanTitle(title)} ${artists[0] || ''}`.trim();
+    // 联想接口不给时长：打分时当作时长一致，是不是同一个录音留给歌词去核对
+    let found = (await searchQQLite(query).catch(() => [])).map((c) => ({ ...c, duration: ref.duration }));
+    if (!found.length && !pool) found = await searchQQ(query).catch(() => []);
+    list = found.map((c) => ({ ...c, score: scoreCandidate(c, ref, names) }));
+  }
+  if (!list?.length) { qrcNextAt = Date.now() + QRC_PAUSE; return null; } // 都没搜到东西多半是限流：歇一阵
+  const ranked = list.filter((c) => c.score >= 70).sort((a, b) => b.score - a.score).slice(0, 2);
+  const tried = []; // 试过哪几首、为什么没用上：记在缓存里，以后查起来知道是「QQ 没有逐字」还是「歌词对不上」
+  for (const c of ranked) {
+    const yrc = parseQrc(qrcContent(decryptQrc((await qqLyric(c.id, c.songId, true)).lyric)));
+    const got = yrc.length ? applyWords(lyrics, yrc) : null;
+    if (!got) { tried.push({ id: c.id, title: c.title, artists: c.artists, score: c.score, words: yrc.length, matched: yrc.length ? mergeWords(lyrics.lines, yrc).matched : 0 }); continue; }
+    writeJSON(file, { v: QRC_V, at: Date.now(), qq: { id: c.id, songId: c.songId, title: c.title, artists: c.artists }, yrc });
+    return { lyrics: got };
+  }
+  writeJSON(file, { v: QRC_V, at: Date.now(), none: 1, found: list.length, tried });
+  return { none: 1 };
+}
+// QQ 自己的歌词、缓存是以前按逐行取的：按逐字版重新取一次
+async function qrcUpgradeQQ(cand) {
+  const data = await fetchLyrics(cand, true);
+  return data.flags?.words ? { lyrics: data } : data.qrc ? { none: 1 } : null;
+}
+// lyrics：fetchLyrics 给的歌词；返回补上逐字的那份（补不了就是原来那份）。wait：最多等多久，超过了这次先用逐行的，后台接着查完存起来
+export async function withQrc(lyrics, cand, track, { refresh = false, wait = 3500, pool = null, onLate = null } = {}) {
+  try {
+    if (!lyrics?.lines?.length || !cand || (cand.source !== 'netease' && cand.source !== 'qq')) return lyrics;
+    if (!qrcEnabled()) return lyrics.qrc && lyrics.flags?.words ? stripWords(lyrics) : lyrics; // 关掉了：QRC 来的逐字时间不用
+    if (lyrics.flags?.words) return lyrics;
+    const key = `${cand.source}-${safeName(cand.id)}`, file = `lyrics/qrc-${key}.json`;
+    if (cand.source === 'netease') {
+      const hit = readJSON(file, null);
+      if (hit?.v === QRC_V && hit.yrc) { const got = applyWords(lyrics, hit.yrc); if (got) return got; }
+      else if (hit?.v === QRC_V && !refresh && Date.now() - hit.at < QRC_NONE_TTL) return lyrics;
+    } else if (lyrics.qrc && !refresh) return lyrics; // 已经按逐字版取过，这首确实没有
+    let job = qrcJobs.get(key);
+    if (!job) {
+      if ((!refresh && Date.now() - (qrcFailed.get(key) || 0) < QRC_RETRY) || Date.now() < qrcNextAt) return lyrics;
+      qrcNextAt = Date.now() + QRC_GAP;
+      job = (cand.source === 'qq' ? qrcUpgradeQQ(cand) : qrcFromQQ(lyrics, cand, track, file, pool)).catch(() => null)
+        .then((r) => { qrcJobs.delete(key); if (r) qrcFailed.delete(key); else qrcFailed.set(key, Date.now()); return r; });
+      qrcJobs.set(key, job);
+    }
+    const LATE = {};
+    const got = await Promise.race([job, new Promise((r) => { setTimeout(() => r(LATE), wait).unref?.(); })]);
+    // 等不及先给逐行的：后台查到逐字以后说一声
+    if (got === LATE && onLate) job.then((r) => { if (r?.lyrics) onLate(); }).catch(() => {});
+    return (got !== LATE && got?.lyrics) || lyrics;
+  } catch { return lyrics; }
+}
+// 给界面看的标记：逐字时间是从 QRC 来的，就在 flags 上加 qrc（界面把「逐字」显示成「QRC」）。
+// 歌词来源列表里的网易云条目，已经补过逐字的也算；开关关着时 QRC 来的逐字不算数
+export function lyricFlags(cand, lyrics) {
+  const f = lyrics?.flags;
+  if (!f) return f;
+  if (!qrcEnabled()) return lyrics.qrc && f.words ? { ...f, words: false } : f;
+  if (f.words) return lyrics.qrc ? { ...f, qrc: true } : f;
+  if (cand?.source === 'netease') {
+    const hit = readJSON(`lyrics/qrc-netease-${safeName(cand.id)}.json`, null);
+    if (hit?.v === QRC_V && hit.yrc) return { ...f, words: true, qrc: true };
+  }
+  return f;
 }
